@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -16,11 +16,9 @@ namespace DnD_character_list
     public partial class Form4 : Form
     {
         public Form1 form1;
-
         public int DataIDCharacter;
         private bool isLoading = false;
         private GetOldStats oldStats = new GetOldStats();
-
 
         public Form4(int value)
         {
@@ -28,23 +26,19 @@ namespace DnD_character_list
             InitializeComponent();
             this.pictureBox2.MouseClick += pictureBox2_Click;
             Load_character();
-            
         }
-
 
         private void pictureBox2_Click(object sender, EventArgs e)
         {
             Form3 form3 = new Form3(form1);
             form3.Show();
             this.Hide();
-
         }
 
         private void Form4_FormClosed(object sender, FormClosedEventArgs e)
         {
             Application.Exit();
         }
-
 
         private void Form4_FormClosing(object sender, FormClosingEventArgs e)
         {
@@ -56,21 +50,17 @@ namespace DnD_character_list
                     MessageBoxButtons.OKCancel,
                     MessageBoxIcon.Question);
                 if (result == DialogResult.Cancel)
-                {
                     e.Cancel = true;
-                }
             }
-
         }
-
 
         private void NewSpellButton_Click(object sender, EventArgs e)
         {
-            DialogResult result = MessageBox.Show(
-                    "Ахуел?",
-                    "Подтверждение выход",
-                    MessageBoxButtons.OKCancel,
-                    MessageBoxIcon.Question);
+            MessageBox.Show(
+                "Ахуел?",
+                "Подтверждение выход",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Question);
         }
 
         private void DataBaseButton_Click(object sender, EventArgs e)
@@ -86,214 +76,83 @@ namespace DnD_character_list
             using (var db = new DDInformationContext())
             {
                 var character = db.Characters.FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
-                int speed = 0;
-                if (character.Gm != null)
-                {
-                    gmUpDown.Value = character.Gm.Value;
-                }
-                if (character.Mm != null)
-                {
-                    mmUpDown.Value = character.Mm.Value;
-                }
-                if (character.Sm != null)
-                {
-                    smUpDown.Value = character.Sm.Value;
-                }
-                if (character.Em != null)
-                {
-                    emUpDown.Value = character.Em.Value;
-                }
-                if (character.Pm != null)
-                {
-                    pmUpDown.Value = character.Pm.Value;
-                }
-                if (character.Name != null)
-                {
-                    NameTextBox.Text = character.Name;
-                }
-                if (character.Hitpoints != null)
-                {
-                    MaxHPUpDown.Value = character.Hitpoints.Value;
-                }
-                if (character.CurHp != null)
-                {
-                    CurHPUpDown.Value += character.CurHp.Value;
-                }
-                if (character.Exp != null)
-                {
-                    ExUpDown.Value += character.Exp.Value;
-                }
-                if (character.Notes != null)
-                {
-                    NotesTextBox.Text = character.Notes.ToString();
-                }
-                if (character.Speed != null)
-                {
-                    speed = character.Speed.Value;
-                }
-                if (character.Kd != null)
-                {
-                    KDUpDown.Value = character.Kd.Value;
-                }
+
+                if (character.Gm != null) gmUpDown.Value = character.Gm.Value;
+                if (character.Mm != null) mmUpDown.Value = character.Mm.Value;
+                if (character.Sm != null) smUpDown.Value = character.Sm.Value;
+                if (character.Em != null) emUpDown.Value = character.Em.Value;
+                if (character.Pm != null) pmUpDown.Value = character.Pm.Value;
+                if (character.Name != null) NameTextBox.Text = character.Name;
+                if (character.Hitpoints != null) MaxHPUpDown.Value = character.Hitpoints.Value;
+                if (character.CurHp != null) CurHPUpDown.Value = character.CurHp.Value;
+                if (character.Exp != null) ExUpDown.Value = character.Exp.Value;
+                if (character.Notes != null) NotesTextBox.Text = character.Notes;
+                if (character.Kd != null) KDUpDown.Value = character.Kd.Value;
+
                 if (character.Description != null)
                 {
-                    var spas = character.Description.Split(";");
-
-                    foreach (string items in spas)
+                    foreach (string item in character.Description.Split(';'))
                     {
-                        switch (items)
+                        switch (item)
                         {
-                            case "сил":
-                                StrengthCheckBox.Checked = true;
-                                break;
-                            case "лов":
-                                AgilityCheckBox.Checked = true;
-                                break;
-                            case "тел":
-                                StaminaCheckBox.Checked = true;
-                                break;
-                            case "инт":
-                                IntelligenceCheckBox.Checked = true;
-                                break;
-                            case "муд":
-                                WisdomCheckBox.Checked = true;
-                                break;
-                            case "хар":
-                                CharismaCheckBox.Checked = true;
-                                break;
-                            default:
-                                break;
+                            case "сил": StrengthCheckBox.Checked = true; break;
+                            case "лов": AgilityCheckBox.Checked = true; break;
+                            case "тел": StaminaCheckBox.Checked = true; break;
+                            case "инт": IntelligenceCheckBox.Checked = true; break;
+                            case "муд": WisdomCheckBox.Checked = true; break;
+                            case "хар": CharismaCheckBox.Checked = true; break;
                         }
                     }
                 }
 
-                using (var dbback = new DDInformationContext())
-                {
-                    comboBackground.DataSource = dbback.Backgrounds.ToList();
-                    comboBackground.DisplayMember = "Name";
-                    comboBackground.ValueMember = "IdBackground";
-                }
+                comboBackground.DataSource = db.Backgrounds.ToList();
+                comboBackground.DisplayMember = "Name";
+                comboBackground.ValueMember = "IdBackground";
 
-                using (var dbspis = new DDInformationContext())
-                {
-                    comboSpecies.DataSource = dbspis.Species.ToList();
-                    comboSpecies.DisplayMember = "Name";
-                    comboSpecies.ValueMember = "IdSpecies";
-                }
+                comboSpecies.DataSource = db.Species.ToList();
+                comboSpecies.DisplayMember = "Name";
+                comboSpecies.ValueMember = "IdSpecies";
 
                 if (character.PossesionNew != null)
                 {
-                    var spas = character.PossesionNew.Split(";");
-
-                    foreach (string items in spas)
+                    foreach (string item in character.PossesionNew.Split(';'))
                     {
-                        switch (items)
+                        switch (item)
                         {
-                            case "атлетика":
-                                AthleticsCheckBox.Checked = true;
-                                break;
-                            case "акробатика":
-                                AcrobaticsCheckBox.Checked = true;
-                                break;
-                            case "ловкость рук":
-                                DexterityCheckBox.Checked = true;
-                                break;
-                            case "скрытность":
-                                StealthCheckBox.Checked = true;
-                                break;
-                            case "анализ":
-                                DessectionCheckBox.Checked = true;
-                                break;
-                            case "история":
-                                HistoryCheckBox.Checked = true;
-                                break;
-                            case "магия":
-                                MagicCheckBox.Checked = true;
-                                break;
-                            case "природа":
-                                NatureCheckBox.Checked = true;
-                                break;
-                            case "религия":
-                                ReligionCheckBox.Checked = true;
-                                break;
-                            case "восприятие":
-                                PerceptionCheckBox.Checked = true;
-                                break;
-                            case "выживание":
-                                SurvivalCheckBox.Checked = true;
-                                break;
-                            case "медицина":
-                                MedicineCheckBox.Checked = true;
-                                break;
-                            case "проницание":
-                                DiscriminationCheckBox.Checked = true;
-                                break;
-                            case "выступление":
-                                PerformanceCheckBox.Checked = true;
-                                break;
-                            case "запугивание":
-                                IntimidationCheckBox.Checked = true;
-                                break;
-                            case "обман":
-                                DeceptionCheckBox.Checked = true;
-                                break;
-                            case "убеждение":
-                                PersuasionCheckBox.Checked = true;
-                                break;
-                            case "атлетика+":
-                                AthleticsCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "акробатика+":
-                                AcrobaticsCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "ловкость рук+":
-                                DexterityCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "скрытность+":
-                                StealthCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "анализ+":
-                                DessectionCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "история+":
-                                HistoryCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "магия+":
-                                MagicCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "природа+":
-                                NatureCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "религия+":
-                                ReligionCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "восприятие+":
-                                PerceptionCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "выживание+":
-                                SurvivalCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "медицина+":
-                                MedicineCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "проницание+":
-                                DiscriminationCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "выступление+":
-                                PerformanceCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "запугивание+":
-                                IntimidationCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "обман+":
-                                DeceptionCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-                            case "убеждение+":
-                                PersuasionCheckBox.CheckState = CheckState.Indeterminate;
-                                break;
-
-                            default:
-                                break;
+                            case "атлетика": AthleticsCheckBox.Checked = true; break;
+                            case "акробатика": AcrobaticsCheckBox.Checked = true; break;
+                            case "ловкость рук": DexterityCheckBox.Checked = true; break;
+                            case "скрытность": StealthCheckBox.Checked = true; break;
+                            case "анализ": DessectionCheckBox.Checked = true; break;
+                            case "история": HistoryCheckBox.Checked = true; break;
+                            case "магия": MagicCheckBox.Checked = true; break;
+                            case "природа": NatureCheckBox.Checked = true; break;
+                            case "религия": ReligionCheckBox.Checked = true; break;
+                            case "восприятие": PerceptionCheckBox.Checked = true; break;
+                            case "выживание": SurvivalCheckBox.Checked = true; break;
+                            case "медицина": MedicineCheckBox.Checked = true; break;
+                            case "проницание": DiscriminationCheckBox.Checked = true; break;
+                            case "выступление": PerformanceCheckBox.Checked = true; break;
+                            case "запугивание": IntimidationCheckBox.Checked = true; break;
+                            case "обман": DeceptionCheckBox.Checked = true; break;
+                            case "убеждение": PersuasionCheckBox.Checked = true; break;
+                            case "атлетика+": AthleticsCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "акробатика+": AcrobaticsCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "ловкость рук+": DexterityCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "скрытность+": StealthCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "анализ+": DessectionCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "история+": HistoryCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "магия+": MagicCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "природа+": NatureCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "религия+": ReligionCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "восприятие+": PerceptionCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "выживание+": SurvivalCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "медицина+": MedicineCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "проницание+": DiscriminationCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "выступление+": PerformanceCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "запугивание+": IntimidationCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "обман+": DeceptionCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "убеждение+": PersuasionCheckBox.CheckState = CheckState.Indeterminate; break;
                         }
                     }
                 }
@@ -302,49 +161,28 @@ namespace DnD_character_list
                 {
                     switch (character.SpasWin)
                     {
-                        case 1:
-                            WinCheck1.Checked = true; break;
-                        case 2:
-                            WinCheck1.Checked = true;
-                            WinCheck2.Checked = true; break;
-                        case 3:
-                            WinCheck2.Checked = true;
-                            WinCheck1.Checked = true;
-                            WinCheck3.Checked = true; break;
-
-                        default:
-                            break;
+                        case 1: WinCheck1.Checked = true; break;
+                        case 2: WinCheck1.Checked = true; WinCheck2.Checked = true; break;
+                        case 3: WinCheck1.Checked = true; WinCheck2.Checked = true; WinCheck3.Checked = true; break;
                     }
                 }
+
                 if (character.SpasLose != null)
                 {
                     switch (character.SpasLose)
                     {
-                        case 1:
-                            LoseCheck1.Checked = true; break;
-                        case 2:
-                            LoseCheck1.Checked = true;
-                            LoseCheck2.Checked = true; break;
-                        case 3:
-                            LoseCheck2.Checked = true;
-                            LoseCheck1.Checked = true;
-                            LoseCheck3.Checked = true; break;
-
-                        default:
-                            break;
+                        case 1: LoseCheck1.Checked = true; break;
+                        case 2: LoseCheck1.Checked = true; LoseCheck2.Checked = true; break;
+                        case 3: LoseCheck1.Checked = true; LoseCheck2.Checked = true; LoseCheck3.Checked = true; break;
                     }
                 }
 
-                if (character.Possession != null)
-                {
-                    OtherSkillsTextBox.Text = character.Possession;
-                }
+                if (character.Possession != null) OtherSkillsTextBox.Text = character.Possession;
 
                 if (character.Characteristiks != null)
                 {
                     var stats = character.Characteristiks.Split(';');
-
-                    if (stats.Length == 7)
+                    if (stats.Length >= 6)
                     {
                         StrengthUpDown.Value = decimal.Parse(stats[0]);
                         AgilityUpDown.Value = decimal.Parse(stats[1]);
@@ -356,26 +194,51 @@ namespace DnD_character_list
                 }
 
                 comboSpecies.SelectedValue = character.IdSpecies;
+                comboBackground.SelectedValue = character.IdBackground;
 
-                if (speed != 0)
+                if (character.Speed != null && character.Speed != 0)
+                    SpeedUpDown.Value = character.Speed.Value;
+
+                var species = db.Species.FirstOrDefault(s => s.IdSpecies == character.IdSpecies);
+                if (species != null)
                 {
-                    SpeedUpDown.Value = speed;
+                    SpecieSkillsTextBox.Text = species.SpeciesSkills ?? "";
+                    if (!string.IsNullOrEmpty(species.Speed))
+                    {
+                        foreach (var seg in species.Speed.Split(';'))
+                        {
+                            if (string.IsNullOrEmpty(seg)) continue;
+                            var parts = seg.Split(':');
+                            if (parts.Length < 2) continue;
+                            switch (parts[0].Trim())
+                            {
+                                case "пла":
+                                    SpeedSkillTextBox.Text = $"\n\n Ваша скорость плаванья составляет {parts[1]} футов";
+                                    break;
+                                case "лет":
+                                    SpeedSkillTextBox.Text = $"\n\n Ваша скорость полёта составляет {parts[1]} футов";
+                                    break;
+                            }
+                        }
+                    }
                 }
 
-                comboBackground.SelectedValue = character.IdBackground;
+                var bg = db.Backgrounds.FirstOrDefault(b => b.IdBackground == character.IdBackground);
+                if (bg != null)
+                {
+                    BackgroundDescTextBox.Text = (bg.Description ?? "") + "\n \n" + bg.Invetary;
+                    if (bg.ToolOwnership != null) ToolsTextBox.Text = bg.ToolOwnership;
+                }
+
                 isLoading = false;
             }
-
-
         }
-
 
         private void ReloadButton_Click(object sender, EventArgs e)
         {
             using (var db = new DDInformationContext())
             {
-                var character = db.Characters
-                    .FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
+                var character = db.Characters.FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
 
                 if (character != null)
                 {
@@ -391,97 +254,57 @@ namespace DnD_character_list
                     character.Em = (int)emUpDown.Value;
                     character.Pm = (int)pmUpDown.Value;
 
-                    string charist = StrengthUpDown.Value.ToString() + ";" +
-                        AgilityUpDown.Value.ToString() + ";" +
-                        StaminaUpDown.Value.ToString() + ";" +
-                        IntelligenceUpDown.Value.ToString() + ";" +
-                        WisdomUpDown.Value.ToString() + ";" +
-                        CharismaUpDown.Value.ToString() + ";";
-                    character.Characteristiks = charist;
+                    character.Characteristiks =
+                        StrengthUpDown.Value + ";" +
+                        AgilityUpDown.Value + ";" +
+                        StaminaUpDown.Value + ";" +
+                        IntelligenceUpDown.Value + ";" +
+                        WisdomUpDown.Value + ";" +
+                        CharismaUpDown.Value + ";";
 
                     string des = null;
-                    if (StrengthCheckBox.Checked)
-                    {
-                        des += "сил;";
-                    }
-                    if (AgilityCheckBox.Checked)
-                    {
-                        des += "лов;";
-                    }
-                    if (StaminaCheckBox.Checked)
-                    {
-                        des += "тел;";
-                    }
-                    if (CharismaCheckBox.Checked)
-                    {
-                        des += "хар;";
-                    }
-                    if (WisdomCheckBox.Checked)
-                    {
-                        des += "муд;";
-                    }
-                    if (IntelligenceCheckBox.Checked)
-                    {
-                        des += "инт;";
-                    }
+                    if (StrengthCheckBox.Checked) des += "сил;";
+                    if (AgilityCheckBox.Checked) des += "лов;";
+                    if (StaminaCheckBox.Checked) des += "тел;";
+                    if (CharismaCheckBox.Checked) des += "хар;";
+                    if (WisdomCheckBox.Checked) des += "муд;";
+                    if (IntelligenceCheckBox.Checked) des += "инт;";
                     character.Description = des;
 
                     character.Possession = OtherSkillsTextBox.Text;
                     character.Kd = (int)KDUpDown.Value;
+
                     int winspascount = 0;
-                    if (WinCheck1.Checked)
-                    {
-                        winspascount++;
-                    }
-                    if (WinCheck2.Checked)
-                    {
-                        winspascount++;
-                    }
-                    if (WinCheck3.Checked)
-                    {
-                        winspascount++;
-                    }
+                    if (WinCheck1.Checked) winspascount++;
+                    if (WinCheck2.Checked) winspascount++;
+                    if (WinCheck3.Checked) winspascount++;
                     character.SpasWin = winspascount;
 
                     int losespascount = 0;
-                    if (LoseCheck1.Checked)
-                    {
-                        losespascount++;
-                    }
-                    if (LoseCheck2.Checked)
-                    {
-                        losespascount++;
-                    }
-                    if (LoseCheck3.Checked)
-                    {
-                        losespascount++;
-                    }
+                    if (LoseCheck1.Checked) losespascount++;
+                    if (LoseCheck2.Checked) losespascount++;
+                    if (LoseCheck3.Checked) losespascount++;
                     character.SpasLose = losespascount;
 
                     string possnew = null;
-                    var possesions = new List<CheckBox> { AthleticsCheckBox,
-                    AcrobaticsCheckBox, DexterityCheckBox, StealthCheckBox,
-                    DessectionCheckBox, HistoryCheckBox, MagicCheckBox, NatureCheckBox,
-                    ReligionCheckBox, PerceptionCheckBox, SurvivalCheckBox,
-                    MedicineCheckBox, DiscriminationCheckBox, PerformanceCheckBox,
-                    IntimidationCheckBox, DeceptionCheckBox, PersuasionCheckBox};
+                    var possesions = new List<CheckBox> {
+                        AthleticsCheckBox, AcrobaticsCheckBox, DexterityCheckBox, StealthCheckBox,
+                        DessectionCheckBox, HistoryCheckBox, MagicCheckBox, NatureCheckBox,
+                        ReligionCheckBox, PerceptionCheckBox, SurvivalCheckBox,
+                        MedicineCheckBox, DiscriminationCheckBox, PerformanceCheckBox,
+                        IntimidationCheckBox, DeceptionCheckBox, PersuasionCheckBox
+                    };
 
                     foreach (var poss in possesions)
                     {
                         if (poss.CheckState == CheckState.Checked)
-                        {
                             possnew += poss.Text.ToLower() + ";";
-                        }
-                        if (poss.CheckState == CheckState.Indeterminate)
-                        {
+                        else if (poss.CheckState == CheckState.Indeterminate)
                             possnew += poss.Text.ToLower() + "+;";
-                        }
                     }
 
                     character.PossesionNew = possnew;
-
                     db.SaveChanges();
-
                     MessageBox.Show("Сохранено!");
                 }
                 else
@@ -493,69 +316,45 @@ namespace DnD_character_list
 
         private async void button1_Click(object sender, EventArgs e)
         {
-            //var importerSpells = new SpellsImporter();
-            //var importerSpecies = new SpeciesImporter();
-            //var importerBackground = new BackgroundImporter();
             var importerClasses = new ClassesImporter();
-            //await importerSpecies.ImportRacesAsync();
-            //await importerBackground.ImportBackgroundAsync();
-            //await importerSpells.ImportSpellAsync();
             await importerClasses.ImportClassAsync();
         }
 
-
-
         private void comboSpecies_SelectedIndexChanged(object sender, EventArgs e)
         {
-            // Check if there's a valid selection
-
             if (isLoading) return;
+
             var selectedSpecies = comboSpecies.SelectedItem as Species;
             if (selectedSpecies == null) return;
 
             int specieId = selectedSpecies.IdSpecies;
 
-
             try
             {
                 using (var db = new DDInformationContext())
                 {
-                    // Execute query immediately with FirstOrDefault
                     var specie = db.Species
                         .Where(s => s.IdSpecies == specieId)
-                        .Select(s => new
-                        {
-                            s.Speed,
-                            s.SpeciesChaTics,
-                            s.SpeciesSkills,
-                            s.IdSpecies
-                        })
-                        .FirstOrDefault(); // This actually executes the query
+                        .Select(s => new { s.Speed, s.SpeciesChaTics, s.SpeciesSkills, s.IdSpecies })
+                        .FirstOrDefault();
 
                     if (specie == null) return;
 
-                    var character = db.Characters
-                        .FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
-
+                    var character = db.Characters.FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
                     if (character == null) return;
 
                     character.IdSpecies = specieId;
-
-                    // Fix 1: Use actual property values, not ToString() on query
                     SpecieSkillsTextBox.Text = specie.SpeciesSkills ?? "";
 
                     var prevSpecies = oldStats.getoldspecie(DataIDCharacter);
 
-                    if (!string.IsNullOrEmpty(prevSpecies.Speed))
+                    if (!string.IsNullOrEmpty(prevSpecies?.Speed))
                     {
-                        var speeds = prevSpecies.Speed.Split(';');
-                        foreach (var speed in speeds)
+                        foreach (var seg in prevSpecies.Speed.Split(';'))
                         {
-                            if (string.IsNullOrEmpty(speed)) continue;
-
-                            var aids = speed.Split(':');
+                            if (string.IsNullOrEmpty(seg)) continue;
+                            var aids = seg.Split(':');
                             if (aids.Length < 2) continue;
-
                             switch (aids[0].Trim())
                             {
                                 case "пеш":
@@ -566,8 +365,6 @@ namespace DnD_character_list
                                     }
                                     break;
                                 case "пла":
-                                    SpeedSkillTextBox.Text = "";
-                                    break;
                                 case "лет":
                                     SpeedSkillTextBox.Text = "";
                                     break;
@@ -575,17 +372,13 @@ namespace DnD_character_list
                         }
                     }
 
-                    // Fix 2: Check for null before splitting
                     if (!string.IsNullOrEmpty(specie.Speed))
                     {
-                        var speeds = specie.Speed.Split(';');
-                        foreach (var speed in speeds)
+                        foreach (var seg in specie.Speed.Split(';'))
                         {
-                            if (string.IsNullOrEmpty(speed)) continue;
-
-                            var aids = speed.Split(':');
+                            if (string.IsNullOrEmpty(seg)) continue;
+                            var aids = seg.Split(':');
                             if (aids.Length < 2) continue;
-
                             switch (aids[0].Trim())
                             {
                                 case "пеш":
@@ -605,82 +398,39 @@ namespace DnD_character_list
                         }
                     }
 
-                        if (!string.IsNullOrEmpty(prevSpecies.SpeciesChaTics))
+                    if (!string.IsNullOrEmpty(prevSpecies?.SpeciesChaTics))
                     {
-                        var charticks = prevSpecies.SpeciesChaTics.Split(';');
-                        foreach (var chart in charticks)
+                        foreach (var chart in prevSpecies.SpeciesChaTics.Split(';'))
                         {
                             if (string.IsNullOrEmpty(chart)) continue;
-
                             var chartick = chart.Split(':');
                             if (chartick.Length < 2) continue;
-
                             switch (chartick[0].Trim())
                             {
-                                case "сил":
-                                    if (int.TryParse(chartick[1], out int strBonus))
-                                        StrengthUpDown.Value -= strBonus;
-                                    break;
-                                case "лов":
-                                    if (int.TryParse(chartick[1], out int agiBonus))
-                                        AgilityUpDown.Value -= agiBonus;
-                                    break;
-                                case "тел":
-                                    if (int.TryParse(chartick[1], out int staBonus))
-                                        StaminaUpDown.Value -= staBonus;
-                                    break;
-                                case "инт":
-                                    if (int.TryParse(chartick[1], out int intBonus))
-                                        IntelligenceUpDown.Value -= intBonus;
-                                    break;
-                                case "муд":
-                                    if (int.TryParse(chartick[1], out int wisBonus))
-                                        WisdomUpDown.Value -= wisBonus;
-                                    break;
-                                case "хар":
-                                    if (int.TryParse(chartick[1], out int chaBonus))
-                                        CharismaUpDown.Value -= chaBonus;
-                                    break;
+                                case "сил": if (int.TryParse(chartick[1], out int s)) StrengthUpDown.Value -= s; break;
+                                case "лов": if (int.TryParse(chartick[1], out int a)) AgilityUpDown.Value -= a; break;
+                                case "тел": if (int.TryParse(chartick[1], out int st)) StaminaUpDown.Value -= st; break;
+                                case "инт": if (int.TryParse(chartick[1], out int i)) IntelligenceUpDown.Value -= i; break;
+                                case "муд": if (int.TryParse(chartick[1], out int w)) WisdomUpDown.Value -= w; break;
+                                case "хар": if (int.TryParse(chartick[1], out int c)) CharismaUpDown.Value -= c; break;
                             }
                         }
                     }
 
-                    // Fix 3: Handle characteristics properly
                     if (!string.IsNullOrEmpty(specie.SpeciesChaTics))
                     {
-                        var charticks = specie.SpeciesChaTics.Split(';');
-                        foreach (var chart in charticks)
+                        foreach (var chart in specie.SpeciesChaTics.Split(';'))
                         {
                             if (string.IsNullOrEmpty(chart)) continue;
-
                             var chartick = chart.Split(':');
-
                             switch (chartick[0].Trim())
                             {
-                                case "сил":
-                                    if (int.TryParse(chartick[1], out int strBonus))
-                                        StrengthUpDown.Value += strBonus;
-                                    break;
-                                case "лов":
-                                    if (int.TryParse(chartick[1], out int agiBonus))
-                                        AgilityUpDown.Value += agiBonus;
-                                    break;
-                                case "тел":
-                                    if (int.TryParse(chartick[1], out int staBonus))
-                                        StaminaUpDown.Value += staBonus;
-                                    break;
-                                case "инт":
-                                    if (int.TryParse(chartick[1], out int intBonus))
-                                        IntelligenceUpDown.Value += intBonus;
-                                    break;
-                                case "муд":
-                                    if (int.TryParse(chartick[1], out int wisBonus))
-                                        WisdomUpDown.Value += wisBonus;
-                                    break;
-                                case "хар":
-                                    if (int.TryParse(chartick[1], out int chaBonus))
-                                        CharismaUpDown.Value += chaBonus;
-                                    break;
+                                case "сил": if (int.TryParse(chartick[1], out int s)) StrengthUpDown.Value += s; break;
+                                case "лов": if (int.TryParse(chartick[1], out int a)) AgilityUpDown.Value += a; break;
+                                case "тел": if (int.TryParse(chartick[1], out int st)) StaminaUpDown.Value += st; break;
+                                case "инт": if (int.TryParse(chartick[1], out int i)) IntelligenceUpDown.Value += i; break;
+                                case "муд": if (int.TryParse(chartick[1], out int w)) WisdomUpDown.Value += w; break;
+                                case "хар": if (int.TryParse(chartick[1], out int c)) CharismaUpDown.Value += c; break;
                                 case "21/111":
                                     MessageBox.Show("Вам надо будет выбрать: \n\n" +
                                         "2 очка в одну характеристику и 1 в другую \n" +
@@ -701,45 +451,40 @@ namespace DnD_character_list
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-                Console.WriteLine($"Ошибка: {ex.Message}");
+                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void comboBackground_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (isLoading) return;
+
             var selectedBackground = comboBackground.SelectedItem as Background;
+            if (selectedBackground == null) return;
+
             int backgroundID = selectedBackground.IdBackground;
             try
             {
                 using (var db = new DDInformationContext())
                 {
+                    var background = db.Backgrounds
+                        .Where(b => b.IdBackground == backgroundID)
+                        .Select(b => new { b.Name, b.Possesion, b.Invetary, b.Gm, b.Description, b.ToolOwnership })
+                        .FirstOrDefault();
 
-                    var background = db.Backgrounds.Where(b => b.IdBackground == backgroundID)
-                        .Select(b => new
-                        {
-                            b.Name,
-                            b.Possesion,
-                            b.Invetary,
-                            b.Gm,
-                            b.Description,
-                            b.ToolOwnership
-                        }).FirstOrDefault();
                     var charecter = db.Characters.FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
-
                     charecter.IdBackground = backgroundID;
 
-                    BackgroundDescTextBox.Text = background.Description ?? "";
+                    BackgroundDescTextBox.Text = (background.Description ?? "") + "\n \n" + background.Invetary;
 
-                    if (oldStats.getoldbackground(DataIDCharacter).Possesion != null)
+                    var oldBg = oldStats.getoldbackground(DataIDCharacter);
+                    int prev_gm = oldBg?.Gm ?? 0;
+
+                    if (oldBg?.Possesion != null)
                     {
-                        var spas = oldStats.getoldbackground(DataIDCharacter).Possesion.Split(";");
-
-                        foreach (string items in spas)
+                        foreach (string item in oldBg.Possesion.Split(';'))
                         {
-                            switch (items)
+                            switch (item)
                             {
                                 case "атлетика": AthleticsCheckBox.Checked = false; break;
                                 case "акробатика": AcrobaticsCheckBox.Checked = false; break;
@@ -764,11 +509,9 @@ namespace DnD_character_list
 
                     if (background.Possesion != null)
                     {
-                        var spas = background.Possesion.Split(";");
-
-                        foreach (string items in spas)
+                        foreach (string item in background.Possesion.Split(';'))
                         {
-                            switch (items)
+                            switch (item)
                             {
                                 case "атлетика": AthleticsCheckBox.Checked = true; break;
                                 case "акробатика": AcrobaticsCheckBox.Checked = true; break;
@@ -790,69 +533,39 @@ namespace DnD_character_list
                             }
                         }
                     }
+
                     string possnew = null;
+                    var possesions = new List<CheckBox> {
+                        AthleticsCheckBox, AcrobaticsCheckBox, DexterityCheckBox, StealthCheckBox,
+                        DessectionCheckBox, HistoryCheckBox, MagicCheckBox, NatureCheckBox,
+                        ReligionCheckBox, PerceptionCheckBox, SurvivalCheckBox,
+                        MedicineCheckBox, DiscriminationCheckBox, PerformanceCheckBox,
+                        IntimidationCheckBox, DeceptionCheckBox, PersuasionCheckBox
+                    };
 
-                    var possesions = new List<CheckBox> { AthleticsCheckBox,
-                    AcrobaticsCheckBox, DexterityCheckBox, StealthCheckBox,
-                    DessectionCheckBox, HistoryCheckBox, MagicCheckBox, NatureCheckBox,
-                    ReligionCheckBox, PerceptionCheckBox, SurvivalCheckBox,
-                    MedicineCheckBox, DiscriminationCheckBox, PerformanceCheckBox,
-                    IntimidationCheckBox, DeceptionCheckBox, PersuasionCheckBox};
-
-                    foreach (var poss in possesions) {
+                    foreach (var poss in possesions)
+                    {
                         if (poss.CheckState == CheckState.Checked)
-                        {
                             possnew += poss.Text.ToLower() + ";";
-                        }
-                        if (poss.CheckState == CheckState.Indeterminate) {
+                        else if (poss.CheckState == CheckState.Indeterminate)
                             possnew += poss.Text.ToLower() + "+;";
-                        }
                     }
 
                     charecter.PossesionNew = possnew;
 
-
-                    BackgroundDescTextBox.Text += "\n \n" + background.Invetary;
-                    int prev_gm = 0;
-                    if (oldStats.getoldbackground(DataIDCharacter).Gm != null)
-                    {
-                        prev_gm = (int)oldStats.getoldbackground(DataIDCharacter).Gm;
-                    }
-                    if ((int)gmUpDown.Value - prev_gm >= 0)
-                        {
-                        gmUpDown.Value -= prev_gm;
-
-                        charecter.Gm -= prev_gm;
-                        if (background.Gm != null)
-                        {
-                            gmUpDown.Value += (int)background.Gm;
-                            charecter.Gm += (int)background.Gm;
-                        }
-                    }
-                    else
-                    {
-                        gmUpDown.Value = (int)(background.Gm ?? 0);
-                        charecter.Gm = (int)(background.Gm ?? 0);
-                    }
-                    charecter.Gm = (int)gmUpDown.Value;
-
-
-                    db.SaveChanges();
                     if (background.ToolOwnership != null)
-                    {
                         ToolsTextBox.Text = background.ToolOwnership;
-                    }
-                    
 
-                    
+                    int newGold = Math.Max(0, (int)gmUpDown.Value - prev_gm) + (background.Gm ?? 0);
+                    gmUpDown.Value = newGold;
+                    charecter.Gm = newGold;
+                    db.SaveChanges();
                 }
-                
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 Console.WriteLine($"Ошибка {ex.Message}");
             }
         }
-
-
     }
 }
