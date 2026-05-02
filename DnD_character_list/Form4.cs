@@ -17,9 +17,10 @@ namespace DnD_character_list
     {
         public Form1 form1;
 
-        private int DataIDCharacter;
-        private Species prev_specie;
-        private Background prev_background;
+        public int DataIDCharacter;
+        private bool isLoading = false;
+        private GetOldStats oldStats = new GetOldStats();
+
 
         public Form4(int value)
         {
@@ -27,29 +28,9 @@ namespace DnD_character_list
             InitializeComponent();
             this.pictureBox2.MouseClick += pictureBox2_Click;
             Load_character();
-            getoldspecie(prev_specie);
-            getoldbackground(prev_background);
+            
         }
 
-        private Species getoldspecie(Species prev_specie)
-        {
-            using (var db = new DDInformationContext())
-            {
-                var character = db.Characters.FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
-                prev_specie = db.Species.FirstOrDefault(s => s.IdSpecies == character.IdSpecies);
-            }
-            return prev_specie;
-        }
-
-        private Background getoldbackground(Background prev_background)
-        {
-            using (var db = new DDInformationContext())
-            {
-                var character = db.Characters.FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
-                prev_background = db.Backgrounds.FirstOrDefault(b => b.IdBackground == character.IdBackground);
-            }
-            return prev_background;
-        }
 
         private void pictureBox2_Click(object sender, EventArgs e)
         {
@@ -101,62 +82,62 @@ namespace DnD_character_list
 
         void Load_character()
         {
+            isLoading = true;
             using (var db = new DDInformationContext())
             {
-                var character = db.Characters.Where
-                    (c => c.IdCharacter == DataIDCharacter).Select
-                    (c => new
-                    {
-                        Charname = c.Name,
-                        CharHp = c.Hitpoints,
-                        CharCurHp = c.CurHp,
-                        CharExp = c.Exp,
-                        CharNotes = c.Notes,
-                        CharSpeed = c.Speed,
-                        CharChar = c.Characteristiks,
-                        CharDesc = c.Description,
-                        CharPoss = c.Possession,
-                        CharBack = c.IdBackground,
-                        CahrIdSpecies = c.IdSpecies,
-                        CharKd = c.Kd,
-                        CharTimeHP = c.TimeHitpoints,
-                        CharWW = c.Worldview,
-                        CharWin = c.SpasWin,
-                        CharLose = c.SpasLose,
-                        CharViborPersision = c.PossesionNew
-                    }).FirstOrDefault();
+                var character = db.Characters.FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
                 int speed = 0;
-                if (character.Charname != null)
+                if (character.Gm != null)
                 {
-                    NameTextBox.Text = character.Charname;
+                    gmUpDown.Value = character.Gm.Value;
                 }
-                if (character.CharHp != null)
+                if (character.Mm != null)
                 {
-                    MaxHPUpDown.Value = character.CharHp.Value;
+                    mmUpDown.Value = character.Mm.Value;
                 }
-                if (character.CharCurHp != null)
+                if (character.Sm != null)
                 {
-                    CurHPUpDown.Value += character.CharCurHp.Value;
+                    smUpDown.Value = character.Sm.Value;
                 }
-                if (character.CharExp != null)
+                if (character.Em != null)
                 {
-                    ExUpDown.Value += character.CharExp.Value;
+                    emUpDown.Value = character.Em.Value;
                 }
-                if (character.CharNotes != null)
+                if (character.Pm != null)
                 {
-                    NotesTextBox.Text = character.CharNotes.ToString();
+                    pmUpDown.Value = character.Pm.Value;
                 }
-                if (character.CharSpeed != null)
+                if (character.Name != null)
                 {
-                    speed = character.CharSpeed.Value;
+                    NameTextBox.Text = character.Name;
                 }
-                if (character.CharKd != null)
+                if (character.Hitpoints != null)
                 {
-                    KDUpDown.Value = character.CharKd.Value;
+                    MaxHPUpDown.Value = character.Hitpoints.Value;
                 }
-                if (character.CharDesc != null)
+                if (character.CurHp != null)
                 {
-                    var spas = character.CharDesc.Split(";");
+                    CurHPUpDown.Value += character.CurHp.Value;
+                }
+                if (character.Exp != null)
+                {
+                    ExUpDown.Value += character.Exp.Value;
+                }
+                if (character.Notes != null)
+                {
+                    NotesTextBox.Text = character.Notes.ToString();
+                }
+                if (character.Speed != null)
+                {
+                    speed = character.Speed.Value;
+                }
+                if (character.Kd != null)
+                {
+                    KDUpDown.Value = character.Kd.Value;
+                }
+                if (character.Description != null)
+                {
+                    var spas = character.Description.Split(";");
 
                     foreach (string items in spas)
                     {
@@ -200,9 +181,9 @@ namespace DnD_character_list
                     comboSpecies.ValueMember = "IdSpecies";
                 }
 
-                if (character.CharViborPersision != null)
+                if (character.PossesionNew != null)
                 {
-                    var spas = character.CharViborPersision.Split(";");
+                    var spas = character.PossesionNew.Split(";");
 
                     foreach (string items in spas)
                     {
@@ -317,9 +298,9 @@ namespace DnD_character_list
                     }
                 }
 
-                if (character.CharWin != null)
+                if (character.SpasWin != null)
                 {
-                    switch (character.CharWin)
+                    switch (character.SpasWin)
                     {
                         case 1:
                             WinCheck1.Checked = true; break;
@@ -335,9 +316,9 @@ namespace DnD_character_list
                             break;
                     }
                 }
-                if (character.CharLose != null)
+                if (character.SpasLose != null)
                 {
-                    switch (character.CharLose)
+                    switch (character.SpasLose)
                     {
                         case 1:
                             LoseCheck1.Checked = true; break;
@@ -354,14 +335,14 @@ namespace DnD_character_list
                     }
                 }
 
-                if (character.CharPoss != null)
+                if (character.Possession != null)
                 {
-                    OtherSkillsTextBox.Text = character.CharPoss;
+                    OtherSkillsTextBox.Text = character.Possession;
                 }
 
-                if (character.CharChar != null)
+                if (character.Characteristiks != null)
                 {
-                    var stats = character.CharChar.Split(';');
+                    var stats = character.Characteristiks.Split(';');
 
                     if (stats.Length == 7)
                     {
@@ -374,15 +355,15 @@ namespace DnD_character_list
                     }
                 }
 
-                comboSpecies.SelectedValue = character.CahrIdSpecies;
+                comboSpecies.SelectedValue = character.IdSpecies;
 
                 if (speed != 0)
                 {
                     SpeedUpDown.Value = speed;
                 }
 
-                comboBackground.SelectedValue = character.CharBack;
-
+                comboBackground.SelectedValue = character.IdBackground;
+                isLoading = false;
             }
 
 
@@ -404,6 +385,11 @@ namespace DnD_character_list
                     character.Exp = (int)ExUpDown.Value;
                     character.Notes = NotesTextBox.Text;
                     character.Speed = (int)SpeedUpDown.Value;
+                    character.Gm = (int)gmUpDown.Value;
+                    character.Mm = (int)mmUpDown.Value;
+                    character.Sm = (int)smUpDown.Value;
+                    character.Em = (int)emUpDown.Value;
+                    character.Pm = (int)pmUpDown.Value;
 
                     string charist = StrengthUpDown.Value.ToString() + ";" +
                         AgilityUpDown.Value.ToString() + ";" +
@@ -473,141 +459,23 @@ namespace DnD_character_list
                     character.SpasLose = losespascount;
 
                     string possnew = null;
-                    if (AthleticsCheckBox.CheckState == CheckState.Checked)
+                    var possesions = new List<CheckBox> { AthleticsCheckBox,
+                    AcrobaticsCheckBox, DexterityCheckBox, StealthCheckBox,
+                    DessectionCheckBox, HistoryCheckBox, MagicCheckBox, NatureCheckBox,
+                    ReligionCheckBox, PerceptionCheckBox, SurvivalCheckBox,
+                    MedicineCheckBox, DiscriminationCheckBox, PerformanceCheckBox,
+                    IntimidationCheckBox, DeceptionCheckBox, PersuasionCheckBox};
+
+                    foreach (var poss in possesions)
                     {
-                        possnew += AthleticsCheckBox.Text.ToLower() + ";";
-                    }
-                    if (AcrobaticsCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += AcrobaticsCheckBox.Text.ToLower() + ";";
-                    }
-                    if (DexterityCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += DexterityCheckBox.Text.ToLower() + ";";
-                    }
-                    if (StealthCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += StealthCheckBox.Text.ToLower() + ";";
-                    }
-                    if (DessectionCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += DessectionCheckBox.Text.ToLower() + ";";
-                    }
-                    if (HistoryCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += HistoryCheckBox.Text.ToLower() + ";";
-                    }
-                    if (MagicCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += MagicCheckBox.Text.ToLower() + ";";
-                    }
-                    if (NatureCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += NatureCheckBox.Text.ToLower() + ";";
-                    }
-                    if (ReligionCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += ReligionCheckBox.Text.ToLower() + ";";
-                    }
-                    if (PerceptionCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += PerceptionCheckBox.Text.ToLower() + ";";
-                    }
-                    if (SurvivalCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += SurvivalCheckBox.Text.ToLower() + ";";
-                    }
-                    if (MedicineCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += MedicineCheckBox.Text.ToLower() + ";";
-                    }
-                    if (DiscriminationCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += DiscriminationCheckBox.Text.ToLower() + ";";
-                    }
-                    if (PerformanceCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += PerformanceCheckBox.Text.ToLower() + ";";
-                    }
-                    if (IntimidationCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += IntimidationCheckBox.Text.ToLower() + ";";
-                    }
-                    if (DeceptionCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += DeceptionCheckBox.Text.ToLower() + ";";
-                    }
-                    if (PersuasionCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += PersuasionCheckBox.Text.ToLower() + ";";
-                    }
-                    if (AthleticsCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += AthleticsCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (AcrobaticsCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += AcrobaticsCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (DexterityCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += DexterityCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (StealthCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += StealthCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (DessectionCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += DessectionCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (HistoryCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += HistoryCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (MagicCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += MagicCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (NatureCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += NatureCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (ReligionCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += ReligionCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (PerceptionCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += PerceptionCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (SurvivalCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += SurvivalCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (MedicineCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += MedicineCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (DiscriminationCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += DiscriminationCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (PerformanceCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += PerformanceCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (IntimidationCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += IntimidationCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (DeceptionCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += DeceptionCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (PersuasionCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += PersuasionCheckBox.Text.ToLower() + "+;";
+                        if (poss.CheckState == CheckState.Checked)
+                        {
+                            possnew += poss.Text.ToLower() + ";";
+                        }
+                        if (poss.CheckState == CheckState.Indeterminate)
+                        {
+                            possnew += poss.Text.ToLower() + "+;";
+                        }
                     }
 
                     character.PossesionNew = possnew;
@@ -641,7 +509,7 @@ namespace DnD_character_list
         {
             // Check if there's a valid selection
 
-
+            if (isLoading) return;
             var selectedSpecies = comboSpecies.SelectedItem as Species;
             if (selectedSpecies == null) return;
 
@@ -676,9 +544,11 @@ namespace DnD_character_list
                     // Fix 1: Use actual property values, not ToString() on query
                     SpecieSkillsTextBox.Text = specie.SpeciesSkills ?? "";
 
-                    if (!string.IsNullOrEmpty(getoldspecie(prev_specie).Speed))
+                    var prevSpecies = oldStats.getoldspecie(DataIDCharacter);
+
+                    if (!string.IsNullOrEmpty(prevSpecies.Speed))
                     {
-                        var speeds = getoldspecie(prev_specie).Speed.Split(';');
+                        var speeds = prevSpecies.Speed.Split(';');
                         foreach (var speed in speeds)
                         {
                             if (string.IsNullOrEmpty(speed)) continue;
@@ -734,9 +604,10 @@ namespace DnD_character_list
                             }
                         }
                     }
-                    if (!string.IsNullOrEmpty(getoldspecie(prev_specie).SpeciesChaTics))
+
+                        if (!string.IsNullOrEmpty(prevSpecies.SpeciesChaTics))
                     {
-                        var charticks = getoldspecie(prev_specie).SpeciesChaTics.Split(';');
+                        var charticks = prevSpecies.SpeciesChaTics.Split(';');
                         foreach (var chart in charticks)
                         {
                             if (string.IsNullOrEmpty(chart)) continue;
@@ -774,8 +645,6 @@ namespace DnD_character_list
                         }
                     }
 
-                    prev_specie = db.Species.FirstOrDefault(s => s.IdSpecies == specieId);
-
                     // Fix 3: Handle characteristics properly
                     if (!string.IsNullOrEmpty(specie.SpeciesChaTics))
                     {
@@ -785,7 +654,6 @@ namespace DnD_character_list
                             if (string.IsNullOrEmpty(chart)) continue;
 
                             var chartick = chart.Split(':');
-                            if (chartick.Length < 2) continue;
 
                             switch (chartick[0].Trim())
                             {
@@ -841,6 +709,7 @@ namespace DnD_character_list
 
         private void comboBackground_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (isLoading) return;
             var selectedBackground = comboBackground.SelectedItem as Background;
             int backgroundID = selectedBackground.IdBackground;
             try
@@ -864,65 +733,31 @@ namespace DnD_character_list
 
                     BackgroundDescTextBox.Text = background.Description ?? "";
 
-                    if (getoldbackground(prev_background).Possesion != null)
+                    if (oldStats.getoldbackground(DataIDCharacter).Possesion != null)
                     {
-                        var spas = getoldbackground(prev_background).Possesion.Split(";");
+                        var spas = oldStats.getoldbackground(DataIDCharacter).Possesion.Split(";");
 
                         foreach (string items in spas)
                         {
                             switch (items)
                             {
-                                case "атлетика":
-                                    AthleticsCheckBox.Checked = false;
-                                    break;
-                                case "акробатика":
-                                    AcrobaticsCheckBox.Checked = false;
-                                    break;
-                                case "ловкость рук":
-                                    DexterityCheckBox.Checked = false;
-                                    break;
-                                case "скрытность":
-                                    StealthCheckBox.Checked = false;
-                                    break;
-                                case "анализ":
-                                    DessectionCheckBox.Checked = false;
-                                    break;
-                                case "история":
-                                    HistoryCheckBox.Checked = false;
-                                    break;
-                                case "магия":
-                                    MagicCheckBox.Checked = false;
-                                    break;
-                                case "природа":
-                                    NatureCheckBox.Checked = false;
-                                    break;
-                                case "религия":
-                                    ReligionCheckBox.Checked = false;
-                                    break;
-                                case "восприятие":
-                                    PerceptionCheckBox.Checked = false;
-                                    break;
-                                case "выживание":
-                                    SurvivalCheckBox.Checked = false;
-                                    break;
-                                case "медицина":
-                                    MedicineCheckBox.Checked = false;
-                                    break;
-                                case "проницание":
-                                    DiscriminationCheckBox.Checked = false;
-                                    break;
-                                case "выступление":
-                                    PerformanceCheckBox.Checked = false;
-                                    break;
-                                case "запугивание":
-                                    IntimidationCheckBox.Checked = false;
-                                    break;
-                                case "обман":
-                                    DeceptionCheckBox.Checked = false;
-                                    break;
-                                case "убеждение":
-                                    PersuasionCheckBox.Checked = false;
-                                    break;
+                                case "атлетика": AthleticsCheckBox.Checked = false; break;
+                                case "акробатика": AcrobaticsCheckBox.Checked = false; break;
+                                case "ловкость рук": DexterityCheckBox.Checked = false; break;
+                                case "скрытность": StealthCheckBox.Checked = false; break;
+                                case "анализ": DessectionCheckBox.Checked = false; break;
+                                case "история": HistoryCheckBox.Checked = false; break;
+                                case "магия": MagicCheckBox.Checked = false; break;
+                                case "природа": NatureCheckBox.Checked = false; break;
+                                case "религия": ReligionCheckBox.Checked = false; break;
+                                case "восприятие": PerceptionCheckBox.Checked = false; break;
+                                case "выживание": SurvivalCheckBox.Checked = false; break;
+                                case "медицина": MedicineCheckBox.Checked = false; break;
+                                case "проницание": DiscriminationCheckBox.Checked = false; break;
+                                case "выступление": PerformanceCheckBox.Checked = false; break;
+                                case "запугивание": IntimidationCheckBox.Checked = false; break;
+                                case "обман": DeceptionCheckBox.Checked = false; break;
+                                case "убеждение": PersuasionCheckBox.Checked = false; break;
                             }
                         }
                     }
@@ -935,222 +770,81 @@ namespace DnD_character_list
                         {
                             switch (items)
                             {
-                                case "атлетика":
-                                    AthleticsCheckBox.Checked = true;
-                                    break;
-                                case "акробатика":
-                                    AcrobaticsCheckBox.Checked = true;
-                                    break;
-                                case "ловкость рук":
-                                    DexterityCheckBox.Checked = true;
-                                    break;
-                                case "скрытность":
-                                    StealthCheckBox.Checked = true;
-                                    break;
-                                case "анализ":
-                                    DessectionCheckBox.Checked = true;
-                                    break;
-                                case "история":
-                                    HistoryCheckBox.Checked = true;
-                                    break;
-                                case "магия":
-                                    MagicCheckBox.Checked = true;
-                                    break;
-                                case "природа":
-                                    NatureCheckBox.Checked = true;
-                                    break;
-                                case "религия":
-                                    ReligionCheckBox.Checked = true;
-                                    break;
-                                case "восприятие":
-                                    PerceptionCheckBox.Checked = true;
-                                    break;
-                                case "выживание":
-                                    SurvivalCheckBox.Checked = true;
-                                    break;
-                                case "медицина":
-                                    MedicineCheckBox.Checked = true;
-                                    break;
-                                case "проницание":
-                                    DiscriminationCheckBox.Checked = true;
-                                    break;
-                                case "выступление":
-                                    PerformanceCheckBox.Checked = true;
-                                    break;
-                                case "запугивание":
-                                    IntimidationCheckBox.Checked = true;
-                                    break;
-                                case "обман":
-                                    DeceptionCheckBox.Checked = true;
-                                    break;
-                                case "убеждение":
-                                    PersuasionCheckBox.Checked = true;
-                                    break;
+                                case "атлетика": AthleticsCheckBox.Checked = true; break;
+                                case "акробатика": AcrobaticsCheckBox.Checked = true; break;
+                                case "ловкость рук": DexterityCheckBox.Checked = true; break;
+                                case "скрытность": StealthCheckBox.Checked = true; break;
+                                case "анализ": DessectionCheckBox.Checked = true; break;
+                                case "история": HistoryCheckBox.Checked = true; break;
+                                case "магия": MagicCheckBox.Checked = true; break;
+                                case "природа": NatureCheckBox.Checked = true; break;
+                                case "религия": ReligionCheckBox.Checked = true; break;
+                                case "восприятие": PerceptionCheckBox.Checked = true; break;
+                                case "выживание": SurvivalCheckBox.Checked = true; break;
+                                case "медицина": MedicineCheckBox.Checked = true; break;
+                                case "проницание": DiscriminationCheckBox.Checked = true; break;
+                                case "выступление": PerformanceCheckBox.Checked = true; break;
+                                case "запугивание": IntimidationCheckBox.Checked = true; break;
+                                case "обман": DeceptionCheckBox.Checked = true; break;
+                                case "убеждение": PersuasionCheckBox.Checked = true; break;
                             }
                         }
                     }
                     string possnew = null;
-                    if (AthleticsCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += AthleticsCheckBox.Text.ToLower() + ";";
-                    }
-                    if (AcrobaticsCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += AcrobaticsCheckBox.Text.ToLower() + ";";
-                    }
-                    if (DexterityCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += DexterityCheckBox.Text.ToLower() + ";";
-                    }
-                    if (StealthCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += StealthCheckBox.Text.ToLower() + ";";
-                    }
-                    if (DessectionCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += DessectionCheckBox.Text.ToLower() + ";";
-                    }
-                    if (HistoryCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += HistoryCheckBox.Text.ToLower() + ";";
-                    }
-                    if (MagicCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += MagicCheckBox.Text.ToLower() + ";";
-                    }
-                    if (NatureCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += NatureCheckBox.Text.ToLower() + ";";
-                    }
-                    if (ReligionCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += ReligionCheckBox.Text.ToLower() + ";";
-                    }
-                    if (PerceptionCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += PerceptionCheckBox.Text.ToLower() + ";";
-                    }
-                    if (SurvivalCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += SurvivalCheckBox.Text.ToLower() + ";";
-                    }
-                    if (MedicineCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += MedicineCheckBox.Text.ToLower() + ";";
-                    }
-                    if (DiscriminationCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += DiscriminationCheckBox.Text.ToLower() + ";";
-                    }
-                    if (PerformanceCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += PerformanceCheckBox.Text.ToLower() + ";";
-                    }
-                    if (IntimidationCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += IntimidationCheckBox.Text.ToLower() + ";";
-                    }
-                    if (DeceptionCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += DeceptionCheckBox.Text.ToLower() + ";";
-                    }
-                    if (PersuasionCheckBox.CheckState == CheckState.Checked)
-                    {
-                        possnew += PersuasionCheckBox.Text.ToLower() + ";";
-                    }
-                    if (AthleticsCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += AthleticsCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (AcrobaticsCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += AcrobaticsCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (DexterityCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += DexterityCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (StealthCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += StealthCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (DessectionCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += DessectionCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (HistoryCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += HistoryCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (MagicCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += MagicCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (NatureCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += NatureCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (ReligionCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += ReligionCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (PerceptionCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += PerceptionCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (SurvivalCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += SurvivalCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (MedicineCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += MedicineCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (DiscriminationCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += DiscriminationCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (PerformanceCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += PerformanceCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (IntimidationCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += IntimidationCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (DeceptionCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += DeceptionCheckBox.Text.ToLower() + "+;";
-                    }
-                    if (PersuasionCheckBox.CheckState == CheckState.Indeterminate)
-                    {
-                        possnew += PersuasionCheckBox.Text.ToLower() + "+;";
+
+                    var possesions = new List<CheckBox> { AthleticsCheckBox,
+                    AcrobaticsCheckBox, DexterityCheckBox, StealthCheckBox,
+                    DessectionCheckBox, HistoryCheckBox, MagicCheckBox, NatureCheckBox,
+                    ReligionCheckBox, PerceptionCheckBox, SurvivalCheckBox,
+                    MedicineCheckBox, DiscriminationCheckBox, PerformanceCheckBox,
+                    IntimidationCheckBox, DeceptionCheckBox, PersuasionCheckBox};
+
+                    foreach (var poss in possesions) {
+                        if (poss.CheckState == CheckState.Checked)
+                        {
+                            possnew += poss.Text.ToLower() + ";";
+                        }
+                        if (poss.CheckState == CheckState.Indeterminate) {
+                            possnew += poss.Text.ToLower() + "+;";
+                        }
                     }
 
                     charecter.PossesionNew = possnew;
 
 
                     BackgroundDescTextBox.Text += "\n \n" + background.Invetary;
-                    
-                    db.SaveChanges();
-
-                    prev_background = db.Backgrounds.FirstOrDefault(b => b.IdBackground == backgroundID);
-
                     int prev_gm = 0;
-                    if (getoldbackground(prev_background).Gm != null)
+                    if (oldStats.getoldbackground(DataIDCharacter).Gm != null)
                     {
-                        prev_gm = (int)getoldbackground(prev_background).Gm;
+                        prev_gm = (int)oldStats.getoldbackground(DataIDCharacter).Gm;
                     }
+                    if ((int)gmUpDown.Value - prev_gm >= 0)
+                        {
+                        gmUpDown.Value -= prev_gm;
 
-                    gmUpDown.Value -= prev_gm;
-                    if (background.Gm != null)
-                    {
-                        gmUpDown.Value += (int)background.Gm;
+                        charecter.Gm -= prev_gm;
+                        if (background.Gm != null)
+                        {
+                            gmUpDown.Value += (int)background.Gm;
+                            charecter.Gm += (int)background.Gm;
+                        }
                     }
+                    else
+                    {
+                        gmUpDown.Value = (int)(background.Gm ?? 0);
+                        charecter.Gm = (int)(background.Gm ?? 0);
+                    }
+                    charecter.Gm = (int)gmUpDown.Value;
+
+
+                    db.SaveChanges();
                     if (background.ToolOwnership != null)
                     {
                         ToolsTextBox.Text = background.ToolOwnership;
                     }
+                    
+
+                    
                 }
                 
             }
