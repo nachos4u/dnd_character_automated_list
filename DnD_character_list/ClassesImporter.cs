@@ -26,7 +26,7 @@ namespace DnD_character_list
 
                 var page = await browser.NewPageAsync();
 
-                // Регистрируем перехват ДО навигации — классы грузятся синхронно при загрузке страницы
+                // Register BEFORE GotoAsync — the class list API fires synchronously during page load
                 var listResponseTask = page.WaitForResponseAsync(
                     r => IsClassListUrl(r.Url),
                     new() { Timeout = 60000 });
@@ -35,7 +35,8 @@ namespace DnD_character_list
 
                 var listResponse = await listResponseTask;
                 var listJson = await listResponse.TextAsync();
-                await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+                // No NetworkIdle — SPA with WebSocket never reaches it.
+                // We already have the data we need from the API response above.
 
                 var classInfoList = ParseClassInfoList(listJson);
 
@@ -151,16 +152,18 @@ namespace DnD_character_list
                 return;
             }
 
-            // Visit 1: main class page → intercept API for description
+            // Visit 1: main class page → intercept API JSON for description
             string description = await GetClassDescriptionAsync(page, classInfo.Slug);
 
             // Visit 2: fragment page → parse HTML
+            // GotoAsync waits for the load event. Then we wait for a key element
+            // to confirm the server-rendered content is present before parsing.
             await page.GotoAsync($"https://5e14.ttg.club/classes/fragment/{classInfo.Slug}");
-            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            await page.WaitForSelectorAsync("table tbody tr", new() { Timeout = 20000 });
 
             string hitDiceName = await ParseHitDiceAsync(page);
             string possession = await ParsePossessionAsync(page);
-            var levelRows = await ParseLevelTableAsync(page, classInfo.Slug);
+            var levelRows = await ParseLevelTableAsync(page);
             var featureDescriptions = await ParseFeatureDescriptionsAsync(page);
             var levelSkills = await ParseLevelSkillsAsync(page, featureDescriptions);
             var archetypeFeatures = await ParseArchetypeFeatureLevelsAsync(page, classInfo.BasicArchetypes);
@@ -179,12 +182,14 @@ namespace DnD_character_list
         {
             try
             {
+                // Register BEFORE navigation so we don't miss the response
                 var responseTask = page.WaitForResponseAsync(
                     r => r.Url.Contains("api/v1/classes") && r.Url.Contains(slug) && !IsClassListUrl(r.Url),
-                    new() { Timeout = 20000 });
+                    new() { Timeout = 30000 });
 
+                // GotoAsync waits for the load event. The API call fires during Vue init,
+                // so the response is captured by responseTask while the page loads.
                 await page.GotoAsync($"https://5e14.ttg.club/classes/{slug}");
-                await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
                 await Task.Delay(15000);
 
@@ -202,45 +207,43 @@ namespace DnD_character_list
 
         // ──────────────────────────────────────────────────────────────
         // Hit dice from fragment page "Хиты" section
+        // Structure: <details><summary class="h4"><span>Хиты</span></summary>
+        //              <div class="content"><p class="class_stats">
+        //                <b>Кость Хитов:</b> <dice-roller formula="1к8"></dice-roller>
         // ──────────────────────────────────────────────────────────────
 
         private async Task<string> ParseHitDiceAsync(IPage page)
         {
-            // Structure: <details><summary class="h4"><span>Хиты</span></summary>
-            //              <div class="content"><p class="class_stats">
-            //                <b>Кость Хитов:</b> <dice-roller formula="1к8"></dice-roller>
-            var found = await page.EvaluateAsync<string>(@"() => {
+            // Search ONLY inside the "Хиты" section to avoid false positives —
+            // e.g. bard body text contains "к12" in Bardic Inspiration description.
+            return await page.EvaluateAsync<string>(@"() => {
                 const summaries = Array.from(document.querySelectorAll('summary'));
                 const h = summaries.find(el => /хиты/i.test(el.textContent));
-                if (!h) return '';
+                if (!h) return 'к8';
                 const content = h.parentElement.querySelector('div.content');
-                if (!content) return '';
+                if (!content) return 'к8';
                 const dr = content.querySelector('dice-roller');
                 if (dr) {
                     const formula = dr.getAttribute('formula') || '';
                     const m = formula.match(/к(6|8|10|12)/);
                     if (m) return 'к' + m[1];
                 }
-                return '';
-            }") ?? "";
-
-            if (!string.IsNullOrEmpty(found)) return found;
-
-            var body = await page.InnerTextAsync("body");
-            foreach (var d in new[] { "к12", "к10", "к8", "к6" })
-                if (body.Contains(d)) return d;
-
-            return "к8";
+                // Fallback: read innerText of the section paragraphs
+                const statsText = Array.from(content.querySelectorAll('p.class_stats'))
+                    .map(p => p.innerText).join(' ');
+                const m2 = statsText.match(/к(6|8|10|12)/);
+                return m2 ? 'к' + m2[1] : 'к8';
+            }") ?? "к8";
         }
 
         // ──────────────────────────────────────────────────────────────
-        // Possession from fragment page "Владени" section
+        // Possession from fragment page "Владение" section
+        // Structure: <details><summary class="h4"><span>Владение</span></summary>
+        //              <div class="content"><p class="class_stats"><b>Доспехи:</b>...
         // ──────────────────────────────────────────────────────────────
 
         private async Task<string> ParsePossessionAsync(IPage page)
         {
-            // Structure: <details><summary class="h4"><span>Владение</span></summary>
-            //              <div class="content"><p class="class_stats"><b>Доспехи:</b>...
             return await page.EvaluateAsync<string>(@"() => {
                 const summaries = Array.from(document.querySelectorAll('summary'));
                 const h = summaries.find(el => /владени/i.test(el.textContent));
@@ -260,12 +263,12 @@ namespace DnD_character_list
 
         private record LevelRow(int Level, string? Cells, string? ClassTableFeatures);
 
-        private async Task<List<LevelRow>> ParseLevelTableAsync(IPage page, string slug)
+        private async Task<List<LevelRow>> ParseLevelTableAsync(IPage page)
         {
             var rows = new List<LevelRow>();
 
-            // Skip group-header cells with colspan > 1 (e.g. "Ячейки заклинаний на уровень заклинаний")
-            // so that column indices match actual data column positions.
+            // The bard table has a colspan=9 group header "Ячейки заклинаний на уровень заклинаний"
+            // in the first thead row. Filtering it out keeps column indices aligned with data cells.
             var headers = await page.EvaluateAsync<string[]>(@"() => {
                 const cells = Array.from(document.querySelectorAll('table thead th, table thead td'));
                 return cells
@@ -276,28 +279,27 @@ namespace DnD_character_list
             int Col(params string[] keywords) =>
                 Array.FindIndex(headers, h => keywords.Any(k => h.Contains(k, StringComparison.OrdinalIgnoreCase)));
 
-            int profCol = Col("Бонус мастерства", "БМ");
-            int cantripsCol = Col("Известные заговоры", "КЗ");
-            int knownSpellsCol = Col("Известные заклинания", "ИЗ");
-            int sorceryCol = Col("Единицы чародейства", "ЕЧ");
-            int warlockSlotsCol = Col("Ячейки заклинаний");
+            int profCol          = Col("Бонус мастерства", "БМ");
+            int cantripsCol      = Col("Известные заговоры", "КЗ");
+            int knownSpellsCol   = Col("Известные заклинания", "ИЗ");
+            int sorceryCol       = Col("Единицы чародейства", "ЕЧ");
+            int warlockSlotsCol  = Col("Ячейки заклинаний");
             int warlockSlotLvlCol = Col("Уровень ячеек", "УЯ");
-            int invocationsCol = Col("Воззвания", "ВЗ");
+            int invocationsCol   = Col("Воззвания", "ВЗ");
 
             var spellCols = new int[9];
             for (int i = 1; i <= 9; i++)
                 spellCols[i - 1] = Array.FindIndex(headers, h => h.Trim() == i.ToString());
 
-            // Class-specific extra columns → ClassTableFeatures
             var extraCols = new Dictionary<string, (int idx, string abbr)>();
             (string name, string abbr)[] extras =
             {
-                ("Ярость", "ЯР"),
-                ("Урон ярости", "УЯР"),
-                ("Боевые искусства", "БИ"),
-                ("Очки ци", "ОЦ"),
-                ("Скорость без доспехов", "СБД"),
-                ("Скрытая атака", "СА")
+                ("Ярость",               "ЯР"),
+                ("Урон ярости",          "УЯР"),
+                ("Боевые искусства",     "БИ"),
+                ("Очки ци",              "ОЦ"),
+                ("Скорость без доспехов","СБД"),
+                ("Скрытая атака",        "СА")
             };
             foreach (var (name, abbr) in extras)
             {
@@ -325,13 +327,13 @@ namespace DnD_character_list
                 var cellsSb = new StringBuilder();
                 void Append(string key, int col) { var v = GetVal(col); if (v != null) cellsSb.Append($"{key}:{v};"); }
 
-                Append("БМ", profCol);
-                Append("КЗ", cantripsCol);
-                Append("ИЗ", knownSpellsCol);
-                Append("ЕЧ", sorceryCol);
-                Append("ЯЧ", warlockSlotsCol);
-                Append("УЯ", warlockSlotLvlCol);
-                Append("ВЗ", invocationsCol);
+                Append("БМ",  profCol);
+                Append("КЗ",  cantripsCol);
+                Append("ИЗ",  knownSpellsCol);
+                Append("ЕЧ",  sorceryCol);
+                Append("ЯЧ",  warlockSlotsCol);
+                Append("УЯ",  warlockSlotLvlCol);
+                Append("ВЗ",  invocationsCol);
                 for (int i = 0; i < 9; i++) Append($"{i + 1}", spellCols[i]);
 
                 var featuresSb = new StringBuilder();
@@ -353,7 +355,7 @@ namespace DnD_character_list
         }
 
         // ──────────────────────────────────────────────────────────────
-        // Feature descriptions from summary[id] blocks
+        // Feature descriptions
         // Structure: <details>
         //              <summary class="h4" id="c1">
         //                <span>Вдохновение барда</span>
@@ -368,6 +370,7 @@ namespace DnD_character_list
 
         private async Task<Dictionary<string, string>> ParseFeatureDescriptionsAsync(IPage page)
         {
+            // id is on <summary>, not <details>
             var result = new Dictionary<string, string>();
             var summaries = await page.QuerySelectorAllAsync("summary[id]");
 
@@ -377,7 +380,6 @@ namespace DnD_character_list
                 if (string.IsNullOrEmpty(id)) continue;
 
                 var text = await summary.EvaluateAsync<string>(@"el => {
-                    // Name: first span that is NOT source-data
                     const nameSpan = Array.from(el.querySelectorAll('span'))
                         .find(s => !s.classList.contains('source-data'));
                     const name = nameSpan
@@ -388,7 +390,6 @@ namespace DnD_character_list
                     const content = details.querySelector('div.content');
                     if (!content) return name;
 
-                    // Second direct-child div inside content holds the description
                     const divs = Array.from(content.querySelectorAll(':scope > div'));
                     const descDiv = divs.find(d => !d.classList.contains('caption_text'));
                     const ps = descDiv
@@ -408,7 +409,7 @@ namespace DnD_character_list
         }
 
         // ──────────────────────────────────────────────────────────────
-        // Level skills: feature links in table rows are <a href="#c1">
+        // Level skills: feature links in table rows <a href="#c1">
         // ──────────────────────────────────────────────────────────────
 
         private record LevelSkillEntry(int Level, string Text);
@@ -424,7 +425,6 @@ namespace DnD_character_list
             {
                 if (levelNum > 20) break;
 
-                // Links: <a href="#c1">текст</a>
                 var links = await row.QuerySelectorAllAsync("a[href^='#c']");
                 var sb = new StringBuilder();
 
@@ -450,7 +450,7 @@ namespace DnD_character_list
         }
 
         // ──────────────────────────────────────────────────────────────
-        // Archetype features from HTML
+        // Archetype features
         // Structure: <details class="archetype_item">
         //              <summary class="h4"><span>Коллегия доблести</span></summary>
         //              <div class="content">
@@ -476,14 +476,11 @@ namespace DnD_character_list
             var jsonResult = await page.EvaluateAsync<string>(@"(names) => {
                 const result = [];
 
-                function normalizeName(s) {
-                    return s.trim()
-                        .replace(/\s+[A-Z]{2,6}$/, '')
-                        .trim()
-                        .toLowerCase();
+                function normalize(s) {
+                    return s.trim().replace(/\s+[A-Z]{2,6}$/, '').trim().toLowerCase();
                 }
 
-                const normalizedNames = names.map(normalizeName);
+                const normalizedNames = names.map(normalize);
                 const archetypeItems = Array.from(document.querySelectorAll('details.archetype_item'));
 
                 for (const details of archetypeItems) {
@@ -493,39 +490,35 @@ namespace DnD_character_list
                         .find(s => !s.classList.contains('source-data'));
                     if (!nameSpan) continue;
 
-                    const archNameNorm = normalizeName(nameSpan.textContent);
+                    const archNorm = normalize(nameSpan.textContent);
                     const matchIdx = normalizedNames.findIndex(n =>
-                        archNameNorm === n || archNameNorm.includes(n) || n.includes(archNameNorm));
+                        archNorm === n || archNorm.includes(n) || n.includes(archNorm));
                     if (matchIdx === -1) continue;
 
                     const originalName = names[matchIdx];
                     const content = details.querySelector('div.content');
                     if (!content) continue;
 
-                    const h4s = Array.from(content.querySelectorAll('h4.header_separator'));
-                    for (const h4 of h4s) {
-                        const featNameSpan = h4.querySelector('span');
-                        const featName = featNameSpan
-                            ? featNameSpan.textContent.trim()
-                            : h4.textContent.trim();
+                    for (const h4 of content.querySelectorAll('h4.header_separator')) {
+                        const featSpan = h4.querySelector('span');
+                        const featName = featSpan ? featSpan.textContent.trim() : h4.textContent.trim();
 
                         const captionP = h4.nextElementSibling;
                         if (!captionP || !captionP.classList.contains('caption_text')) continue;
 
-                        const levelMatch = captionP.textContent.match(/(\d+)/);
-                        const level = levelMatch ? parseInt(levelMatch[1]) : 0;
+                        const m = captionP.textContent.match(/(\d+)/);
+                        const level = m ? parseInt(m[1]) : 0;
                         if (level === 0) continue;
 
                         const descDiv = captionP.nextElementSibling;
                         const descLines = descDiv
                             ? Array.from(descDiv.querySelectorAll('p'))
-                                .map(p => p.innerText.trim())
-                                .filter(Boolean)
+                                .map(p => p.innerText.trim()).filter(Boolean)
                             : [];
 
                         result.push({
                             archName: originalName,
-                            level: level,
+                            level,
                             text: featName + (descLines.length ? '\n' + descLines.join('\n') : '')
                         });
                     }
@@ -541,8 +534,8 @@ namespace DnD_character_list
                 foreach (var item in arr.EnumerateArray())
                 {
                     var archName = item.GetProperty("archName").GetString() ?? "";
-                    var level = item.GetProperty("level").GetInt32();
-                    var text = item.GetProperty("text").GetString() ?? "";
+                    var level    = item.GetProperty("level").GetInt32();
+                    var text     = item.GetProperty("text").GetString() ?? "";
                     if (!string.IsNullOrEmpty(archName) && level > 0)
                         entries.Add(new ArchetypeFeatureEntry(archName, level, text));
                 }
@@ -564,7 +557,6 @@ namespace DnD_character_list
         {
             var fullName = $"{classInfo.RusName}: {arch.Name}";
 
-            // Archetype possession = main class possession + additional proficiencies from archetype
             var archExtraProficiency = archetypeFeatures
                 .Where(f => f.ArchetypeName == arch.Name &&
                             (f.Text.Contains("навык", StringComparison.OrdinalIgnoreCase) ||
@@ -578,7 +570,6 @@ namespace DnD_character_list
 
             using var db = new DDInformationContext();
 
-            // Find or create Class record
             var existingClass = db.Classes
                 .Include(c => c.Levels)
                 .FirstOrDefault(c => c.Name == fullName);
@@ -587,8 +578,8 @@ namespace DnD_character_list
             if (existingClass != null)
             {
                 existingClass.Description = description;
-                existingClass.Possession = possession;
-                existingClass.IdHitDice = idHitDice;
+                existingClass.Possession  = possession;
+                existingClass.IdHitDice   = idHitDice;
                 db.Levels.RemoveRange(existingClass.Levels);
                 await db.SaveChangesAsync();
                 idClass = existingClass.IdClass;
@@ -597,17 +588,16 @@ namespace DnD_character_list
             {
                 var cls = new Class
                 {
-                    Name = fullName,
+                    Name        = fullName,
                     Description = description,
-                    Possession = possession,
-                    IdHitDice = idHitDice
+                    Possession  = possession,
+                    IdHitDice   = idHitDice
                 };
                 db.Classes.Add(cls);
                 await db.SaveChangesAsync();
                 idClass = cls.IdClass;
             }
 
-            // Build level → archetype features map for this archetype
             var archLevelFeatures = archetypeFeatures
                 .Where(f => f.ArchetypeName == arch.Name)
                 .GroupBy(f => f.Level)
@@ -624,10 +614,10 @@ namespace DnD_character_list
 
                 db.Levels.Add(new Level
                 {
-                    Level1 = lvl,
-                    IdClass = idClass,
-                    Cells = row?.Cells,
-                    Skills = skillsSb.Length > 0 ? skillsSb.ToString().TrimEnd() : null,
+                    Level1             = lvl,
+                    IdClass            = idClass,
+                    Cells              = row?.Cells,
+                    Skills             = skillsSb.Length > 0 ? skillsSb.ToString().TrimEnd() : null,
                     ClassTableFeatures = row?.ClassTableFeatures
                 });
             }
