@@ -567,5 +567,24 @@ namespace DnD_character_list
                 Console.WriteLine($"Ошибка {ex.Message}");
             }
         }
+
+        private void LevelButton_Click(object sender, EventArgs e)
+        {
+            using (Form5 modalForm = new Form5())
+            {
+                DialogResult result = modalForm.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    var selectedClassIds = modalForm.SelectedClassIds;
+                    var selectedLevels = modalForm.SelectedLevels;
+
+                    MessageBox.Show($"Данные получены:\nВыбранные классы: {string.Join(", ", selectedClassIds)}\nВыбранные уровни: {string.Join(", ", selectedLevels)}");
+                }
+                else
+                {
+                    MessageBox.Show("Операция отменена, данные не получены");
+                }
+            }
+        }
     }
 }

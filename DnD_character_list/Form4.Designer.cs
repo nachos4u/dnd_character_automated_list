@@ -293,6 +293,7 @@
             LevelButton.Size = new Size(51, 50);
             LevelButton.TabIndex = 11;
             LevelButton.UseVisualStyleBackColor = true;
+            LevelButton.Click += LevelButton_Click;
             // 
             // LevelLable
             // 
