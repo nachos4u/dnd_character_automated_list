@@ -151,7 +151,7 @@ namespace DnD_character_list
 
             btnAddGroup = new Button();
             btnAddGroup.Text = "➕ Добавить персонажа";
-            btnAddGroup.Size = new Size(170, 35);
+            btnAddGroup.Size = new Size(250, 35);
             btnAddGroup.Location = new Point(100, 10);
             btnAddGroup.Click += BtnAddGroup_Click;
 

@@ -132,6 +132,7 @@ namespace DnD_character_list
                             case "выживание": SurvivalCheckBox.Checked = true; break;
                             case "медицина": MedicineCheckBox.Checked = true; break;
                             case "проницание": DiscriminationCheckBox.Checked = true; break;
+                            case "уход за животными": AnimalCareCheckBox.Checked = true; break;
                             case "выступление": PerformanceCheckBox.Checked = true; break;
                             case "запугивание": IntimidationCheckBox.Checked = true; break;
                             case "обман": DeceptionCheckBox.Checked = true; break;
@@ -149,6 +150,7 @@ namespace DnD_character_list
                             case "выживание+": SurvivalCheckBox.CheckState = CheckState.Indeterminate; break;
                             case "медицина+": MedicineCheckBox.CheckState = CheckState.Indeterminate; break;
                             case "проницание+": DiscriminationCheckBox.CheckState = CheckState.Indeterminate; break;
+                            case "уход за животными+": AnimalCareCheckBox.Checked = true; break;
                             case "выступление+": PerformanceCheckBox.CheckState = CheckState.Indeterminate; break;
                             case "запугивание+": IntimidationCheckBox.CheckState = CheckState.Indeterminate; break;
                             case "обман+": DeceptionCheckBox.CheckState = CheckState.Indeterminate; break;
@@ -291,7 +293,7 @@ namespace DnD_character_list
                         AthleticsCheckBox, AcrobaticsCheckBox, DexterityCheckBox, StealthCheckBox,
                         DessectionCheckBox, HistoryCheckBox, MagicCheckBox, NatureCheckBox,
                         ReligionCheckBox, PerceptionCheckBox, SurvivalCheckBox,
-                        MedicineCheckBox, DiscriminationCheckBox, PerformanceCheckBox,
+                        MedicineCheckBox, DiscriminationCheckBox, AnimalCareCheckBox, PerformanceCheckBox,
                         IntimidationCheckBox, DeceptionCheckBox, PersuasionCheckBox
                     };
 
@@ -317,7 +319,9 @@ namespace DnD_character_list
         private async void button1_Click(object sender, EventArgs e)
         {
             var importerClasses = new ClassesImporter();
+            var importerBackgrounds = new BackgroundImporter();
             await importerClasses.ImportClassAsync();
+            await importerBackgrounds.ImportBackgroundAsync();
         }
 
         private void comboSpecies_SelectedIndexChanged(object sender, EventArgs e)
@@ -500,7 +504,8 @@ namespace DnD_character_list
                                 case "восприятие": PerceptionCheckBox.Checked = false; break;
                                 case "выживание": SurvivalCheckBox.Checked = false; break;
                                 case "медицина": MedicineCheckBox.Checked = false; break;
-                                case "проницание": DiscriminationCheckBox.Checked = false; break;
+                                case "проницательность": DiscriminationCheckBox.Checked = false; break;
+                                case "уход за животными": AnimalCareCheckBox.Checked = false; break;
                                 case "выступление": PerformanceCheckBox.Checked = false; break;
                                 case "запугивание": IntimidationCheckBox.Checked = false; break;
                                 case "обман": DeceptionCheckBox.Checked = false; break;
@@ -527,7 +532,8 @@ namespace DnD_character_list
                                 case "восприятие": PerceptionCheckBox.Checked = true; break;
                                 case "выживание": SurvivalCheckBox.Checked = true; break;
                                 case "медицина": MedicineCheckBox.Checked = true; break;
-                                case "проницание": DiscriminationCheckBox.Checked = true; break;
+                                case "проницательность": DiscriminationCheckBox.Checked = true; break;
+                                case "уход за животными": AnimalCareCheckBox.Checked = true; break;
                                 case "выступление": PerformanceCheckBox.Checked = true; break;
                                 case "запугивание": IntimidationCheckBox.Checked = true; break;
                                 case "обман": DeceptionCheckBox.Checked = true; break;
@@ -541,7 +547,7 @@ namespace DnD_character_list
                         AthleticsCheckBox, AcrobaticsCheckBox, DexterityCheckBox, StealthCheckBox,
                         DessectionCheckBox, HistoryCheckBox, MagicCheckBox, NatureCheckBox,
                         ReligionCheckBox, PerceptionCheckBox, SurvivalCheckBox,
-                        MedicineCheckBox, DiscriminationCheckBox, PerformanceCheckBox,
+                        MedicineCheckBox, DiscriminationCheckBox, AnimalCareCheckBox, PerformanceCheckBox,
                         IntimidationCheckBox, DeceptionCheckBox, PersuasionCheckBox
                     };
 

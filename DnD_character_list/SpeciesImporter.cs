@@ -1,12 +1,5 @@
-﻿using DnD_character_list;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Playwright;
-using Microsoft.VisualBasic.Devices;
-using Microsoft.VisualStudio.TestPlatform.CoreUtilities.Extensions;
-using Newtonsoft.Json.Linq;
-using NUnit.Framework;
 using System.Collections.Concurrent;
-using System.Net;
 using System.Text;
 using System.Text.Json;
 
@@ -14,25 +7,21 @@ namespace DnD_character_list
 {
     internal class SpeciesImporter
     {
-        public int count_race = 0;
-
         public async Task ImportRacesAsync()
         {
-            Random random = new Random();
             var proxies = new List<string>
             {
-                    "http://45.153.231.229:8080"
+                "188.130.184.6:3000@YELcgn68:PYFuji2l"
             };
-            var browserTasks = new List<Task>();
             var speciesToAdd = new ConcurrentBag<Species>();
-            int count = 0;
+            var browserTasks = new List<Task>();
 
             try
             {
                 using var playwright = await Playwright.CreateAsync();
                 await using var browser = await playwright.Chromium.LaunchAsync(new()
                 {
-                    Headless = false,  // Changed to true for production
+                    Headless = false,
                     Timeout = 60000
                 });
 
@@ -47,389 +36,181 @@ namespace DnD_character_list
 
                 var document = JsonSerializer.Deserialize<JsonElement>(jsonText);
 
-                if (document.ValueKind == JsonValueKind.Array)
+                if (document.ValueKind != JsonValueKind.Array) return;
+
+                var urls = new List<string>();
+                foreach (var item in document.EnumerateArray())
                 {
-                    var urls = new List<string>();
+                    if (item.ValueKind != JsonValueKind.Object) continue;
 
-                    foreach (var items in document.EnumerateArray())
+                    bool isBasicSource = false;
+                    bool isMPMM = false;
+
+                    if (item.TryGetProperty("source", out var sourceElement) &&
+                        sourceElement.ValueKind == JsonValueKind.Object)
                     {
-                        if (items.ValueKind == JsonValueKind.Object)
-                        {
-                            bool isBasicSource = false;
-                            bool isMPMM = false;
+                        if (sourceElement.TryGetProperty("group", out var groupElement) &&
+                            groupElement.ValueKind == JsonValueKind.Object &&
+                            groupElement.TryGetProperty("shortName", out var shortName))
+                            isBasicSource = shortName.GetString() == "Basic";
 
-                            if (items.TryGetProperty("source", out var sourceElement) &&
-                                sourceElement.ValueKind == JsonValueKind.Object)
-                            {
-                                // Проверяем group.shortName == "Basic"
-                                if (sourceElement.TryGetProperty("group", out var groupElement) &&
-                                    groupElement.ValueKind == JsonValueKind.Object &&
-                                    groupElement.TryGetProperty("shortName", out var shortNameElement))
-                                {
-                                    isBasicSource = shortNameElement.GetString() == "Basic";
-                                }
-
-                                // Проверяем сам shortName == "MPMM"
-                                if (sourceElement.TryGetProperty("shortName", out var shortNameDirect))
-                                {
-                                    isMPMM = shortNameDirect.GetString() == "MPMM";
-                                }
-                            }
-
-                            // Пропускаем, если не Basic ИЛИ если это MPMM
-                            if (!isBasicSource || isMPMM)
-                            {
-                                string raceName = items.GetProperty("name").GetProperty("rus").GetString() ?? "Без имени";
-                                Console.WriteLine($"Пропущена раса: {raceName} (Basic: {isBasicSource}, MPMM: {isMPMM})");
-                                continue;
-                            }
-
-                            if (items.TryGetProperty("url", out var urlElement))
-                            {
-                                var url = urlElement.GetString();
-                                if (!string.IsNullOrEmpty(url))
-                                    urls.Add(url);
-                            }
-                        }
+                        if (sourceElement.TryGetProperty("shortName", out var shortNameDirect))
+                            isMPMM = shortNameDirect.GetString() == "MPMM";
                     }
 
-
-
-                    var chunks = urls
-                        .Select((url, i) => new { url, i })
-                        .GroupBy(x => x.i % proxies.Count)
-                        .Select(g => g.Select(x => x.url).ToList())
-                        .ToList();
-
-                    for (int i = 0; i < chunks.Count; i++)
+                    if (!isBasicSource || isMPMM)
                     {
-                        var proxy = proxies[i];
-                        var urlsChunk = chunks[i];
-
-                        browserTasks.Add(Task.Run(async () =>
-                        {
-                            using var playwrightLocal = await Playwright.CreateAsync();
-                            await using var browserLocal = await playwrightLocal.Chromium.LaunchAsync(new()
-                            {
-                                Headless = false,
-                                Proxy = new Proxy
-                                {
-                                    Server = proxy
-                                }
-                            });
-
-                            var pageLocal = await browserLocal.NewPageAsync();
-
-                            foreach (var url in urlsChunk)
-                            {
-                                using (var dbLocal = new DDInformationContext())
-                                {
-                                    try
-                                    {
-                                        await Task.Delay(Random.Shared.Next(13000, 15000));
-
-                                        var fullUrl = "https://5e14.ttg.club" + url;
-                                        await pageLocal.GotoAsync(fullUrl);
-
-
-                                        // Fix: Use the correct URL for API
-                                        var apiUrl = "/api/v1" + url;
-                                        var response_race = await pageLocal.WaitForResponseAsync(r =>
-                                            r.Url.Contains(apiUrl));
-
-                                        // Fix: Use response_race instead of response
-                                        var bytes = await response_race.BodyAsync();
-                                        string jsonTextRace = Encoding.UTF8.GetString(bytes); // Changed to UTF-8
-
-                                        var raceDocument = JsonSerializer.Deserialize<JsonElement>(jsonTextRace);
-
-                                        if (raceDocument.ValueKind == JsonValueKind.Object)
-                                        {
-
-                                            await ProcessMainRace(raceDocument, speciesToAdd, count);
-
-
-                                        }
-
-
-                                        // Reduced delay
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Console.WriteLine($"Ошибка с прокси {proxy} для URL {url}: {ex.Message}");
-                                    }
-                                }
-                            }
-                        }));
-                    }
-                    await Task.WhenAll(browserTasks);
-
-                    using (var db = new DDInformationContext())
-                    {
-                        foreach (var sp in speciesToAdd)
-                        {
-                            if (!db.Species.Any(s => s.Name == sp.Name))
-                            {
-                                db.Species.Add(sp);
-                            }
-                        }
-                        await db.SaveChangesAsync();
+                        string raceName = item.GetProperty("name").GetProperty("rus").GetString() ?? "Без имени";
+                        Console.WriteLine($"Пропущена раса: {raceName} (Basic: {isBasicSource}, MPMM: {isMPMM})");
+                        continue;
                     }
 
-
+                    if (item.TryGetProperty("url", out var urlElement))
+                    {
+                        var url = urlElement.GetString();
+                        if (!string.IsNullOrEmpty(url))
+                            urls.Add(url);
+                    }
                 }
+
+                var chunks = urls
+                    .Select((url, i) => new { url, i })
+                    .GroupBy(x => x.i % proxies.Count)
+                    .Select(g => g.Select(x => x.url).ToList())
+                    .ToList();
+
+                for (int i = 0; i < chunks.Count; i++)
+                {
+                    var urlsChunk = chunks[i];
+                    var parts = proxies[i].Split('@');
+                    var ipPort = parts[0];
+                    var creds = parts[1].Split(':');
+
+                    var proxy = new Proxy
+                    {
+                        Server = $"https://{ipPort}",
+                        Username = creds[0],
+                        Password = creds[1]
+                    };
+
+                    browserTasks.Add(Task.Run(async () =>
+                    {
+                        using var playwrightLocal = await Playwright.CreateAsync();
+                        await using var browserLocal = await playwrightLocal.Chromium.LaunchAsync(new()
+                        {
+                            Headless = false,
+                            Proxy = proxy
+                        });
+
+                        var pageLocal = await browserLocal.NewPageAsync();
+
+                        HashSet<string> savedNames;
+                        using (var dbCheck = new DDInformationContext())
+                            savedNames = dbCheck.Species.Select(s => s.Name).ToHashSet();
+
+                        foreach (var url in urlsChunk)
+                        {
+                            try
+                            {
+                                await Task.Delay(Random.Shared.Next(13000, 15000));
+
+                                var fullUrl = "https://5e14.ttg.club" + url;
+                                await pageLocal.GotoAsync(fullUrl);
+
+                                var apiUrl = "/api/v1" + url;
+                                var apiResponse = await pageLocal.WaitForResponseAsync(r =>
+                                    r.Url.Contains(apiUrl), new() { Timeout = 30000 });
+
+                                var bytes = await apiResponse.BodyAsync();
+                                string jsonTextRace = Encoding.UTF8.GetString(bytes);
+
+                                var raceDocument = JsonSerializer.Deserialize<JsonElement>(jsonTextRace);
+
+                                if (raceDocument.ValueKind == JsonValueKind.Object)
+                                {
+                                    var parsed = ParseMainRace(raceDocument);
+
+                                    foreach (var species in parsed)
+                                    {
+                                        speciesToAdd.Add(species);
+                                        if (!savedNames.Contains(species.Name))
+                                        {
+                                            savedNames.Add(species.Name);
+                                            try
+                                            {
+                                                using var dbSave = new DDInformationContext();
+                                                dbSave.Species.Add(species);
+                                                await dbSave.SaveChangesAsync();
+                                                Console.WriteLine($"[УСПЕХ] Добавлена раса: {species.Name}");
+                                            }
+                                            catch (Exception saveEx)
+                                            {
+                                                Console.WriteLine($"[ОШИБКА сохранения] {species.Name}: {saveEx.InnerException?.Message ?? saveEx.Message}");
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Ошибка для URL {url}: {ex.Message}");
+                            }
+                        }
+                    }));
+                }
+
+                await Task.WhenAll(browserTasks);
+                await SaveSpeciesToDatabase(speciesToAdd);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Ошибка:\n" + ex.Message);
-            }
-
-        }
-
-        private async Task ProcessSubraces(JsonProperty property, ConcurrentBag<Species> speciesToAdd, int count)
-        {
-            if (property.Value.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var subrace in property.Value.EnumerateArray())
-                {
-                    string namesub = "";
-                    string skillsub = "";
-                    string char_ticssub = "";
-                    string sourcesub = "";
-                    string speedsub = "";
-                    string descsub = "";
-
-                    if (subrace.ValueKind == JsonValueKind.Object)
-                    {
-                        foreach (var obj3 in subrace.EnumerateObject())
-                        {
-                            if (obj3.Name == "name" && obj3.Value.ValueKind == JsonValueKind.Object)
-                                namesub = obj3.Value.GetProperty("rus").GetString() ?? "";
-
-                            else if (obj3.Name == "abilities" && obj3.Value.ValueKind == JsonValueKind.Array)
-                            {
-                                foreach (var ability in obj3.Value.EnumerateArray())
-                                {
-                                    var abb_name = new List<string>();
-                                    var abb_value = new List<string>();
-
-                                    foreach (var abilityProp in ability.EnumerateObject())
-                                    {
-                                        if (abilityProp.Name == "name")
-                                        {
-                                            switch (abilityProp.Value.GetString())
-                                            {
-                                                case "Сила": abb_name.Add("сил"); break;
-                                                case "Ловкость": abb_name.Add("лов"); break;
-                                                case "Телосложение": abb_name.Add("тел"); break;
-                                                case "Интеллект": abb_name.Add("инт"); break;
-                                                case "Мудрость": abb_name.Add("муд"); break;
-                                                case "Харизма": abb_name.Add("хар"); break;
-                                                case "+2 и +1 / +1 к трем": abb_name.Add("21/111"); break;
-                                                case "к другой": abb_name.Add("другой"); break;
-                                                case "к 2 другим": abb_name.Add("2другим"); break;
-                                            }
-                                        }
-                                        else if (abilityProp.Name == "value")
-                                        {
-                                            abb_value.Add(abilityProp.Value.ToString());
-                                        }
-                                    }
-
-                                    for (int k = 0; k < abb_name.Count; k++)
-                                    {
-                                        char_ticssub += abb_name[k] + ":" + abb_value[k] + ";";
-                                    }
-                                }
-                            }
-                            else if (obj3.Name == "source" && obj3.Value.ValueKind == JsonValueKind.Object)
-                                sourcesub = obj3.Value.GetProperty("shortName").GetString() ?? "";
-
-                            else if (obj3.Name == "description")
-                                descsub = obj3.Value.GetString() ?? "";
-
-                            else if (obj3.Name == "speed" && obj3.Value.ValueKind == JsonValueKind.Array)
-                            {
-                                var aids = new List<string>();
-                                var aids_value = new List<string>();
-                                foreach (var speeds in obj3.Value.EnumerateArray())
-                                {
-                                    foreach (var speedwagon in speeds.EnumerateObject())
-                                    {
-                                        if (speedwagon.Name == "name")
-                                        {
-                                            switch (speedwagon.Value.GetString())
-                                            {
-                                                case "летая": aids.Add("лет"); break;
-                                                case "плавая": aids.Add("пла"); break;
-                                            }
-                                        }
-                                        else if (speedwagon.Name == "value")
-                                        {
-                                            aids_value.Add(speedwagon.Value.ToString());
-                                        }
-                                    }
-                                    for (int k = 0; k < aids.Count; k++)
-                                    {
-                                        speedsub += aids[k] + ":" + aids_value[k + 1] + ";";
-                                    }
-
-
-                                }
-                                speedsub += "пеш:" + aids_value[0] + ";";
-                            }
-
-                            else if (obj3.Name == "skills" && obj3.Value.ValueKind == JsonValueKind.Array)
-                            {
-                                foreach (var skill in obj3.Value.EnumerateArray())
-                                {
-                                    foreach (var skillProp in skill.EnumerateObject())
-                                    {
-                                        if (skillProp.Name == "name")
-                                            skillsub += skillProp.Value.GetString() + ": ";
-                                        else if (skillProp.Name == "description")
-                                            skillsub += skillProp.Value.GetString() + "\n\n";
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(namesub))
-                    {
-                        var newSpecies = new Species
-                        {
-                            Name = namesub,
-                            SpeciesChaTics = char_ticssub,
-                            SpeciesSkills = skillsub,
-                            Description = descsub,
-                            Source = sourcesub,
-                            Speed = speedsub
-                        };
-
-                        if (!speciesToAdd.Any(s => s.Name == namesub))
-                        {
-                            speciesToAdd.Add(newSpecies);
-                            Interlocked.Increment(ref count_race);
-                            Console.WriteLine($"[УСПЕХ] Добавлена subrace: {namesub}");
-                        }
-                    }
-                }
+                Console.WriteLine($"Ошибка: {ex.Message}");
+                if (ex.InnerException != null)
+                    Console.WriteLine($"Inner: {ex.InnerException.Message}");
             }
         }
 
-        private async Task ProcessMainRace(JsonElement property, ConcurrentBag<Species> speciesToAdd, int count)
+        private List<Species> ParseMainRace(JsonElement property)
         {
+            var result = new List<Species>();
             string name = "";
             string skill = "";
             string char_tics = "";
             string source = "";
             string speed = "";
             string desc = "";
-            foreach (var raceDocument in property.EnumerateObject())
+
+            foreach (var prop in property.EnumerateObject())
             {
-                if (raceDocument.Name == "name" && raceDocument.Value.ValueKind == JsonValueKind.Object)
+                switch (prop.Name)
                 {
-                    name = raceDocument.Value.GetProperty("rus").GetString() ?? "";
-                }
-                else if (raceDocument.Name == "abilities" && raceDocument.Value.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var ability in raceDocument.Value.EnumerateArray())
-                    {
-                        var abb_name = new List<string>();
-                        var abb_value = new List<string>();
-
-                        foreach (var abilityProp in ability.EnumerateObject())
-                        {
-                            if (abilityProp.Name == "name")
-                            {
-                                switch (abilityProp.Value.GetString())
-                                {
-                                    case "Сила": abb_name.Add("сил"); break;
-                                    case "Ловкость": abb_name.Add("лов"); break;
-                                    case "Телосложение": abb_name.Add("тел"); break;
-                                    case "Интеллект": abb_name.Add("инт"); break;
-                                    case "Мудрость": abb_name.Add("муд"); break;
-                                    case "Харизма": abb_name.Add("хар"); break;
-                                    case "+2 и +1 / +1 к трем": abb_name.Add("21/111"); break;
-                                    case "к другой": abb_name.Add("другой"); break;
-                                    case "к 2 другим": abb_name.Add("2другим"); break;
-                                }
-                            }
-                            else if (abilityProp.Name == "value")
-                            {
-                                abb_value.Add(abilityProp.Value.ToString());
-                            }
-                        }
-
-                        for (int k = 0; k < abb_name.Count; k++)
-                        {
-                            char_tics += abb_name[k] + ":" + abb_value[k] + ";";
-                        }
-                    }
-                }
-                else if (raceDocument.Name == "source" && raceDocument.Value.ValueKind == JsonValueKind.Object)
-                {
-                    source = raceDocument.Value.GetProperty("shortName").GetString() ?? "";
-                }
-                else if (raceDocument.Name == "subraces")
-                {
-                    await ProcessSubraces(raceDocument, speciesToAdd, count);
-                }
-                else if (raceDocument.Name == "description")
-                {
-                    desc = raceDocument.Value.GetString() ?? "";
-                }
-                else if (raceDocument.Name == "speed" && raceDocument.Value.ValueKind == JsonValueKind.Array)
-                {
-                    var aids = new List<string>();
-                    var aids_value = new List<string>();
-                    foreach (var speeds in raceDocument.Value.EnumerateArray())
-                    {
-                        foreach (var speedwagon in speeds.EnumerateObject())
-                        {
-                            if (speedwagon.Name == "name")
-                            {
-                                switch (speedwagon.Value.GetString())
-                                {
-                                    case "летая": aids.Add("лет"); break;
-                                    case "плавая": aids.Add("пла"); break;
-                                    default: break;
-                                }
-                            }
-                            else if (speedwagon.Name == "value")
-                            {
-                                aids_value.Add(speedwagon.Value.ToString());
-                            }
-                        }
-                        for (int k = 0; k < aids.Count; k++)
-                        {
-                            speed += aids[k] + ":" + aids_value[k + 1] + ";";
-                        }
-
-
-                    }
-                    speed += "пеш:" + aids_value[0] + ";";
-                }
-
-                else if (raceDocument.Name == "skills" && raceDocument.Value.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var skillItem in raceDocument.Value.EnumerateArray())
-                    {
-                        foreach (var skillProp in skillItem.EnumerateObject())
-                        {
-                            if (skillProp.Name == "name")
-                                skill += skillProp.Value.GetString() + ": ";
-                            else if (skillProp.Name == "description")
-                                skill += skillProp.Value.GetString() + "\n\n";
-                        }
-                    }
+                    case "name" when prop.Value.ValueKind == JsonValueKind.Object:
+                        name = prop.Value.GetProperty("rus").GetString() ?? "";
+                        break;
+                    case "source" when prop.Value.ValueKind == JsonValueKind.Object:
+                        source = prop.Value.GetProperty("shortName").GetString() ?? "";
+                        break;
+                    case "description":
+                        desc = prop.Value.GetString() ?? "";
+                        break;
+                    case "abilities" when prop.Value.ValueKind == JsonValueKind.Array:
+                        char_tics = ParseAbilities(prop.Value);
+                        break;
+                    case "speed" when prop.Value.ValueKind == JsonValueKind.Array:
+                        speed = ParseSpeed(prop.Value);
+                        break;
+                    case "skills" when prop.Value.ValueKind == JsonValueKind.Array:
+                        skill = ParseSkills(prop.Value);
+                        break;
+                    case "subraces":
+                        result.AddRange(ParseSubraces(prop));
+                        break;
                 }
             }
 
             if (!string.IsNullOrEmpty(name))
             {
-                var newSpecies = new Species
+                result.Insert(0, new Species
                 {
                     Name = name,
                     SpeciesChaTics = char_tics,
@@ -437,15 +218,173 @@ namespace DnD_character_list
                     Description = desc,
                     Source = source,
                     Speed = speed
-                };
+                });
+            }
 
-                // Thread-safe добавление
-                if (!speciesToAdd.Any(s => s.Name == name))
+            return result;
+        }
+
+        private List<Species> ParseSubraces(JsonProperty property)
+        {
+            var result = new List<Species>();
+            if (property.Value.ValueKind != JsonValueKind.Array) return result;
+
+            foreach (var subrace in property.Value.EnumerateArray())
+            {
+                if (subrace.ValueKind != JsonValueKind.Object) continue;
+
+                string name = "";
+                string skill = "";
+                string char_tics = "";
+                string source = "";
+                string speed = "";
+                string desc = "";
+
+                foreach (var prop in subrace.EnumerateObject())
                 {
-                    speciesToAdd.Add(newSpecies);
-                    Interlocked.Increment(ref count_race);
-                    Console.WriteLine($"[УСПЕХ] Добавлена основная раса: {name}");
+                    switch (prop.Name)
+                    {
+                        case "name" when prop.Value.ValueKind == JsonValueKind.Object:
+                            name = prop.Value.GetProperty("rus").GetString() ?? "";
+                            break;
+                        case "source" when prop.Value.ValueKind == JsonValueKind.Object:
+                            source = prop.Value.GetProperty("shortName").GetString() ?? "";
+                            break;
+                        case "description":
+                            desc = prop.Value.GetString() ?? "";
+                            break;
+                        case "abilities" when prop.Value.ValueKind == JsonValueKind.Array:
+                            char_tics = ParseAbilities(prop.Value);
+                            break;
+                        case "speed" when prop.Value.ValueKind == JsonValueKind.Array:
+                            speed = ParseSpeed(prop.Value);
+                            break;
+                        case "skills" when prop.Value.ValueKind == JsonValueKind.Array:
+                            skill = ParseSkills(prop.Value);
+                            break;
+                    }
                 }
+
+                if (!string.IsNullOrEmpty(name))
+                {
+                    result.Add(new Species
+                    {
+                        Name = name,
+                        SpeciesChaTics = char_tics,
+                        SpeciesSkills = skill,
+                        Description = desc,
+                        Source = source,
+                        Speed = speed
+                    });
+                }
+            }
+
+            return result;
+        }
+
+        private string ParseAbilities(JsonElement abilitiesElement)
+        {
+            var result = "";
+            foreach (var ability in abilitiesElement.EnumerateArray())
+            {
+                var names = new List<string>();
+                var values = new List<string>();
+
+                foreach (var prop in ability.EnumerateObject())
+                {
+                    if (prop.Name == "name")
+                    {
+                        switch (prop.Value.GetString())
+                        {
+                            case "Сила": names.Add("сил"); break;
+                            case "Ловкость": names.Add("лов"); break;
+                            case "Телосложение": names.Add("тел"); break;
+                            case "Интеллект": names.Add("инт"); break;
+                            case "Мудрость": names.Add("муд"); break;
+                            case "Харизма": names.Add("хар"); break;
+                            case "+2 и +1 / +1 к трем": names.Add("21/111"); break;
+                            case "к другой": names.Add("другой"); break;
+                            case "к 2 другим": names.Add("2другим"); break;
+                        }
+                    }
+                    else if (prop.Name == "value")
+                    {
+                        values.Add(prop.Value.ToString());
+                    }
+                }
+
+                for (int k = 0; k < names.Count; k++)
+                    result += names[k] + ":" + values[k] + ";";
+            }
+            return result;
+        }
+
+        private string ParseSpeed(JsonElement speedElement)
+        {
+            var result = "";
+            var types = new List<string>();
+            var values = new List<string>();
+
+            foreach (var speedEntry in speedElement.EnumerateArray())
+            {
+                foreach (var prop in speedEntry.EnumerateObject())
+                {
+                    if (prop.Name == "name")
+                    {
+                        switch (prop.Value.GetString())
+                        {
+                            case "летая": types.Add("лет"); break;
+                            case "плавая": types.Add("пла"); break;
+                        }
+                    }
+                    else if (prop.Name == "value")
+                    {
+                        values.Add(prop.Value.ToString());
+                    }
+                }
+
+                for (int k = 0; k < types.Count; k++)
+                    result += types[k] + ":" + values[k + 1] + ";";
+            }
+
+            if (values.Count > 0)
+                result += "пеш:" + values[0] + ";";
+
+            return result;
+        }
+
+        private string ParseSkills(JsonElement skillsElement)
+        {
+            var result = "";
+            foreach (var skill in skillsElement.EnumerateArray())
+            {
+                foreach (var prop in skill.EnumerateObject())
+                {
+                    if (prop.Name == "name")
+                        result += prop.Value.GetString() + ": ";
+                    else if (prop.Name == "description")
+                        result += prop.Value.GetString() + "\n\n";
+                }
+            }
+            return result;
+        }
+
+        private async Task SaveSpeciesToDatabase(ConcurrentBag<Species> speciesToAdd)
+        {
+            using var db = new DDInformationContext();
+            var existingNames = db.Species.Select(s => s.Name).ToHashSet();
+
+            var newSpecies = speciesToAdd
+                .Where(s => !existingNames.Contains(s.Name))
+                .GroupBy(s => s.Name)
+                .Select(g => g.First())
+                .ToList();
+
+            if (newSpecies.Any())
+            {
+                await db.Species.AddRangeAsync(newSpecies);
+                await db.SaveChangesAsync();
+                Console.WriteLine($"Добавлено {newSpecies.Count} новых рас");
             }
         }
     }

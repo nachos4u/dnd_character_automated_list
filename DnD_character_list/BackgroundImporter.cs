@@ -1,35 +1,27 @@
-﻿using Microsoft.Playwright;
-using System;
+using Microsoft.Playwright;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace DnD_character_list
 {
     internal class BackgroundImporter
     {
-        public int count_background = 0;
-
         public async Task ImportBackgroundAsync()
         {
-            Random random = new Random();
             var proxies = new List<string>
             {
-                    "http://45.153.231.229:8080"
+                "188.130.184.6:3000@YELcgn68:PYFuji2l"
             };
-            var browserTasks = new List<Task>();
             var backgroundToAdd = new ConcurrentBag<Background>();
-            int count = 0;
+            var browserTasks = new List<Task>();
 
             try
             {
                 using var playwright = await Playwright.CreateAsync();
                 await using var browser = await playwright.Chromium.LaunchAsync(new()
                 {
-                    Headless = false,  // Changed to true for production
+                    Headless = false,
                     Timeout = 60000
                 });
 
@@ -44,261 +36,203 @@ namespace DnD_character_list
 
                 var document = JsonSerializer.Deserialize<JsonElement>(jsonText);
 
-                if (document.ValueKind == JsonValueKind.Array)
+                if (document.ValueKind != JsonValueKind.Array) return;
+
+                var urls = new List<string>();
+                foreach (var item in document.EnumerateArray())
                 {
-                    var urls = new List<string>();
+                    if (item.ValueKind != JsonValueKind.Object) continue;
+                    if (!IsBasicSource(item)) continue;
 
-                    foreach (var items in document.EnumerateArray())
+                    if (item.TryGetProperty("url", out var urlElement))
                     {
-                        if (items.ValueKind == JsonValueKind.Object)
-                        {
-                            bool isBasicSource = false;
-
-                            if (items.TryGetProperty("source", out var sourceElement) &&
-                                sourceElement.ValueKind == JsonValueKind.Object)
-                            {
-                                // Проверяем group.shortName == "Basic"
-                                if (sourceElement.TryGetProperty("group", out var groupElement) &&
-                                    groupElement.ValueKind == JsonValueKind.Object &&
-                                    groupElement.TryGetProperty("shortName", out var shortNameElement))
-                                {
-                                    isBasicSource = shortNameElement.GetString() == "Basic";
-                                }
-
-                            }
-
-                            // Пропускаем, если не Basic ИЛИ если это MPMM
-                            if (!isBasicSource)
-                            {
-                                continue;
-                            }
-
-                            if (items.TryGetProperty("url", out var urlElement))
-                            {
-                                var url = urlElement.GetString();
-                                if (!string.IsNullOrEmpty(url))
-                                    urls.Add(url);
-                            }
-                        }
+                        var url = urlElement.GetString();
+                        if (!string.IsNullOrEmpty(url))
+                            urls.Add(url);
                     }
-
-
-
-                    var chunks = urls
-                        .Select((url, i) => new { url, i })
-                        .GroupBy(x => x.i % proxies.Count)
-                        .Select(g => g.Select(x => x.url).ToList())
-                        .ToList();
-
-                    for (int i = 0; i < chunks.Count; i++)
-                    {
-                        var proxy = proxies[i];
-                        var urlsChunk = chunks[i];
-
-                        browserTasks.Add(Task.Run(async () =>
-                        {
-                            using var playwrightLocal = await Playwright.CreateAsync();
-                            await using var browserLocal = await playwrightLocal.Chromium.LaunchAsync(new()
-                            {
-                                Headless = false,
-                                Proxy = new Proxy
-                                {
-                                    Server = proxy
-                                }
-                            });
-
-                            var pageLocal = await browserLocal.NewPageAsync();
-
-                            foreach (var url in urlsChunk)
-                            {
-                                using (var dbLocal = new DDInformationContext())
-                                {
-                                    try
-                                    {
-                                        await Task.Delay(Random.Shared.Next(13000, 15000));
-
-                                        var fullUrl = "https://5e14.ttg.club" + url;
-                                        await pageLocal.GotoAsync(fullUrl);
-
-
-                                        // Fix: Use the correct URL for API
-                                        var apiUrl = "/api/v1" + url;
-                                        var response_race = await pageLocal.WaitForResponseAsync(r =>
-                                            r.Url.Contains(apiUrl));
-
-                                        // Fix: Use response_race instead of response
-                                        var bytes = await response_race.BodyAsync();
-                                        string jsonTextRace = Encoding.UTF8.GetString(bytes); // Changed to UTF-8
-
-                                        var raceDocument = JsonSerializer.Deserialize<JsonElement>(jsonTextRace);
-
-                                        if (raceDocument.ValueKind == JsonValueKind.Object)
-                                        {
-
-                                            await ProcessBackground(raceDocument, backgroundToAdd, count);
-
-
-                                        }
-
-
-                                        // Reduced delay
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Console.WriteLine($"Ошибка с прокси {proxy} для URL {url}: {ex.Message}");
-                                    }
-                                }
-                            }
-                        }));
-                    }
-                    await Task.WhenAll(browserTasks);
-
-                    using (var db = new DDInformationContext())
-                    {
-                        foreach (var bg in backgroundToAdd)
-                        {
-                            if (!db.Backgrounds.Any(b => b.Name == bg.Name))
-                            {
-                                db.Backgrounds.Add(bg);
-                            }
-                        }
-                        await db.SaveChangesAsync();
-                    }
-
-
                 }
+
+                var chunks = urls
+                    .Select((url, i) => new { url, i })
+                    .GroupBy(x => x.i % proxies.Count)
+                    .Select(g => g.Select(x => x.url).ToList())
+                    .ToList();
+
+                for (int i = 0; i < chunks.Count; i++)
+                {
+                    var urlsChunk = chunks[i];
+                    var parts = proxies[i].Split('@');
+                    var ipPort = parts[0];
+                    var creds = parts[1].Split(':');
+
+                    var proxy = new Proxy
+                    {
+                        Server = $"https://{ipPort}",
+                        Username = creds[0],
+                        Password = creds[1]
+                    };
+
+                    browserTasks.Add(Task.Run(async () =>
+                    {
+                        using var playwrightLocal = await Playwright.CreateAsync();
+                        await using var browserLocal = await playwrightLocal.Chromium.LaunchAsync(new()
+                        {
+                            Headless = false
+                        });
+
+                        var pageLocal = await browserLocal.NewPageAsync();
+
+                        HashSet<string> savedNames;
+                        using (var dbCheck = new DDInformationContext())
+                            savedNames = dbCheck.Backgrounds.Select(b => b.Name).ToHashSet();
+
+                        foreach (var url in urlsChunk)
+                        {
+                            try
+                            {
+                                await Task.Delay(Random.Shared.Next(13000, 15000));
+
+                                var fullUrl = "https://5e14.ttg.club" + url;
+                                await pageLocal.GotoAsync(fullUrl);
+
+                                var apiUrl = "/api/v1" + url;
+                                var apiResponse = await pageLocal.WaitForResponseAsync(r =>
+                                    r.Url.Contains(apiUrl), new() { Timeout = 30000 });
+
+                                var bytes = await apiResponse.BodyAsync();
+                                string jsonTextBg = Encoding.UTF8.GetString(bytes);
+
+                                var bgDocument = JsonSerializer.Deserialize<JsonElement>(jsonTextBg);
+
+                                if (bgDocument.ValueKind == JsonValueKind.Object)
+                                {
+                                    var bg = ParseBackground(bgDocument);
+                                    if (bg != null)
+                                    {
+                                        backgroundToAdd.Add(bg);
+                                        if (!savedNames.Contains(bg.Name))
+                                        {
+                                            savedNames.Add(bg.Name);
+                                            try
+                                            {
+                                                using var dbSave = new DDInformationContext();
+                                                dbSave.Backgrounds.Add(bg);
+                                                await dbSave.SaveChangesAsync();
+                                                Console.WriteLine($"[УСПЕХ] Добавлен фон: {bg.Name}");
+                                            }
+                                            catch (Exception saveEx)
+                                            {
+                                                Console.WriteLine($"[ОШИБКА сохранения] {bg.Name}: {saveEx.InnerException?.Message ?? saveEx.Message}");
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Ошибка для URL {url}: {ex.Message}");
+                            }
+                        }
+                    }));
+                }
+
+                await Task.WhenAll(browserTasks);
+                await SaveBackgroundsToDatabase(backgroundToAdd);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Ошибка:\n" + ex.Message);
+                Console.WriteLine($"Ошибка: {ex.Message}");
+                if (ex.InnerException != null)
+                    Console.WriteLine($"Inner: {ex.InnerException.Message}");
             }
         }
 
+        private bool IsBasicSource(JsonElement item)
+        {
+            if (item.TryGetProperty("source", out var sourceElement) &&
+                sourceElement.ValueKind == JsonValueKind.Object)
+            {
+                if (sourceElement.TryGetProperty("group", out var groupElement) &&
+                    groupElement.ValueKind == JsonValueKind.Object &&
+                    groupElement.TryGetProperty("shortName", out var shortNameElement))
+                {
+                    return shortNameElement.GetString() == "Basic";
+                }
+            }
+            return false;
+        }
 
-        private async Task ProcessBackground(JsonElement property, ConcurrentBag<Background> backgroundToAdd, int count_background)
+        private Background ParseBackground(JsonElement property)
         {
             string name = "";
             string skill = "";
             int gm = 0;
             string source = "";
-            string invetory = "";
+            string inventory = "";
             string desc = "";
             string tools = "";
-            foreach (var raceDocument in property.EnumerateObject())
+
+            foreach (var prop in property.EnumerateObject())
             {
-                if (raceDocument.Name == "name" && raceDocument.Value.ValueKind == JsonValueKind.Object)
+                switch (prop.Name)
                 {
-                    name = raceDocument.Value.GetProperty("rus").GetString() ?? "";
-                }
-
-                else if (raceDocument.Name == "source" && raceDocument.Value.ValueKind == JsonValueKind.Object)
-                {
-                    source = raceDocument.Value.GetProperty("shortName").GetString() ?? "";
-                }
-
-
-
-                else if (raceDocument.Name == "skills" && raceDocument.Value.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var skillItem in raceDocument.Value.EnumerateArray())
-                    {
-                        switch (skillItem.ToString())
-                        {
-                            case "Атлетика":
-                                skill += "атлетика;";
-                                break;
-                            case "Акробатика":
-                                skill += "акробатика;";
-                                break;
-                            case "Ловкость рук":
-                                skill += "ловкость рук;";
-                                break;
-                            case "Скрытность":
-                                skill += "скрытность;";
-                                break;
-                            case "Анализ":
-                                skill += "анализ;";
-                                break;
-                            case "История":
-                                skill += "история;";
-                                break;
-                            case "Магия":
-                                skill += "магия;";
-                                break;
-                            case "Природа":
-                                skill += "природа;";
-                                break;
-                            case "Религия":
-                                skill += "религия;";
-                                break;
-                            case "Восприятие":
-                                skill += "восприятие;";
-                                break;
-                            case "Выживание":
-                                skill += "выживание;";
-                                break;
-                            case "Медицина":
-                                skill += "медицина;";
-                                break;
-                            case "Проницание":
-                                skill += "проницание;";
-                                break;
-                            case "Выступление":
-                                skill += "выступление;";
-                                break;
-                            case "Запугивание":
-                                skill += "запугивание;";
-                                break;
-                            case "Обман":
-                                skill += "обман;";
-                                break;
-                            case "Убеждение":
-                                skill += "убеждение;";
-                                break;
-                        }
-                    }
-                }
-                else if (raceDocument.Name == "toolOwnership")
-                {
-                    tools = raceDocument.Value.GetString() ?? "";
-                }
-                else if (raceDocument.Name == "equipments")
-                {
-                    foreach (var item in raceDocument.Value.EnumerateArray())
-                    {
-                        invetory += item.ToString() + "; \n";
-                    }
-                }
-                else if (raceDocument.Name == "startGold")
-                {
-                    gm = int.Parse(raceDocument.Value.ToString());
-                }
-                else if (raceDocument.Name == "description")
-                {
-                    desc = raceDocument.Value.GetString() ?? "";
+                    case "name" when prop.Value.ValueKind == JsonValueKind.Object:
+                        name = prop.Value.GetProperty("rus").GetString() ?? "";
+                        break;
+                    case "source" when prop.Value.ValueKind == JsonValueKind.Object:
+                        source = prop.Value.GetProperty("shortName").GetString() ?? "";
+                        break;
+                    case "skills" when prop.Value.ValueKind == JsonValueKind.Array:
+                        foreach (var skillItem in prop.Value.EnumerateArray())
+                            skill += skillItem.GetString()?.ToLower() + ";";
+                        break;
+                    case "toolOwnership":
+                        tools = prop.Value.GetString() ?? "";
+                        break;
+                    case "equipments" when prop.Value.ValueKind == JsonValueKind.Array:
+                        foreach (var item in prop.Value.EnumerateArray())
+                            inventory += item.ToString() + "; \n";
+                        break;
+                    case "startGold":
+                        if (int.TryParse(prop.Value.ToString(), out int gold))
+                            gm = gold;
+                        break;
+                    case "description":
+                        desc = prop.Value.GetString() ?? "";
+                        break;
                 }
             }
 
-            if (!string.IsNullOrEmpty(name))
-            {
-                var newBackground = new Background
-                {
-                    Name = name,
-                    Description = desc,
-                    Source = source,
-                    Possesion = skill,
-                    Gm = gm,
-                    Invetary = invetory,
-                    ToolOwnership = tools
-                };
+            if (string.IsNullOrEmpty(name)) return null;
 
-                // Thread-safe добавление
-                if (!backgroundToAdd.Any(b => b.Name == name))
-                {
-                    backgroundToAdd.Add(newBackground);
-                    Interlocked.Increment(ref count_background);
-                    Console.WriteLine($"[УСПЕХ] Добавлена основная раса: {name}");
-                }
+            return new Background
+            {
+                Name = name,
+                Description = desc,
+                Source = source,
+                Possesion = skill,
+                Gm = gm,
+                Invetary = inventory,
+                ToolOwnership = tools
+            };
+        }
+
+        private async Task SaveBackgroundsToDatabase(ConcurrentBag<Background> backgroundToAdd)
+        {
+            using var db = new DDInformationContext();
+            var existingNames = db.Backgrounds.Select(b => b.Name).ToHashSet();
+
+            var newBackgrounds = backgroundToAdd
+                .Where(b => !existingNames.Contains(b.Name))
+                .GroupBy(b => b.Name)
+                .Select(g => g.First())
+                .ToList();
+
+            if (newBackgrounds.Any())
+            {
+                await db.Backgrounds.AddRangeAsync(newBackgrounds);
+                await db.SaveChangesAsync();
+                Console.WriteLine($"Добавлено {newBackgrounds.Count} новых предысторий");
             }
         }
     }
