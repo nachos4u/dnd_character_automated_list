@@ -22,10 +22,9 @@ namespace DnD_character_list
         public Form3(Form1 form1)
         {
             InitializeComponent();
-            items = new BindingList<GroupOfCharecters>();
 
             // Подписка на изменения свойств каждого элемента
-            items.ForEach(item => item.PropertyChanged += Item_PropertyChanged);
+            groups.ForEach(item => item.PropertyChanged += Item_PropertyChanged);
         }
 
         private void pictureBox1_Click(object sender, EventArgs e)
@@ -68,19 +67,18 @@ namespace DnD_character_list
             // Привязываем событие удаления
             group.OnDelete += (g) =>
             {
-                mainTable.Controls.Remove(g.Button);
+                mainTable.Controls.Remove(g.Panel);   // ← Panel вместо Button
                 groups.Remove(g);
                 g.Dispose();
                 ReindexGroups();
             };
+            group.OnOpen += (g) => this.Hide();       // ← подписка на скрытие Form3
 
             groups.Add(group);
-            mainTable.Controls.Add(group.Button);
+            mainTable.Controls.Add(group.Panel);      // ← Panel вместо Button
             mainTable.RowCount = groups.Count;
             mainTable.Height = groups.Count * 90;
-
-            // Автопрокрутка вниз
-            mainTable.ScrollControlIntoView(group.Button);
+            mainTable.ScrollControlIntoView(group.Panel); 
         }
 
         private void ReindexGroups()

@@ -23,7 +23,7 @@ namespace DnD_character_list
             get => _isClosed;
             set
             {
-                if (_isClosed)
+                if (value != _isClosed)
                 {
                     OnPropertyChanged();
                 }
@@ -31,6 +31,7 @@ namespace DnD_character_list
         }
 
         public event Action<GroupOfCharecters> OnDelete;
+        public event Action<GroupOfCharecters> OnOpen;
 
         public GroupOfCharecters()
         {
@@ -38,23 +39,23 @@ namespace DnD_character_list
 
             // Основная кнопка персонажа
             Button = new Button();
-            Button.Size = new Size(180, 50);
-            Button.Location = new Point(10, 12);
+            Button.Size = new Size(250, 80);
+            Button.Location = new Point(0, 40);
             Button.Text = $"Персонаж {Index}";
             Button.Click += Button_Click;
 
             // Панель для группы
             Panel = new Panel();
-            Panel.Size = new Size(200, 70);
+            Panel.Size = new Size(250, 120);
             Panel.Margin = new Padding(0, 0, 0, 10);
 
             GroupBox = new GroupBox();
-            GroupBox.Size = new Size(200, 70);
+            GroupBox.Size = new Size(250, 120);
             GroupBox.Location = new Point(0, 0);
 
             // Label с информацией
             Label = new Label();
-            Label.Location = new Point(190, 10);
+            Label.Location = new Point(30, 15);
             Label.Size = new Size(200, 25);
             Label.Text = "Информация о персонаже";
             Label.TextAlign = ContentAlignment.MiddleLeft;
@@ -62,8 +63,8 @@ namespace DnD_character_list
             // Кнопка удаления
             DeleteButton = new Button();
             DeleteButton.Text = "🗑️";
-            DeleteButton.Size = new Size(10, 10);
-            DeleteButton.Location = new Point(190, 10);
+            DeleteButton.Size = new Size(30, 30);
+            DeleteButton.Location = new Point(0, 10);
             DeleteButton.Click += DeleteButton_Click;
             DeleteButton.BackColor = Color.LightCoral;
 
@@ -76,7 +77,7 @@ namespace DnD_character_list
         {
             Form4 form4 = new Form4(Index);
             form4.Show();
-            IsClosed = true;
+            OnOpen?.Invoke(this);
         }
 
         private void DeleteButton_Click(object sender, EventArgs e)
@@ -86,9 +87,7 @@ namespace DnD_character_list
 
         public void Dispose()
         {
-            Button?.Dispose();
-            Label?.Dispose();
-            DeleteButton?.Dispose();
+            Panel?.Dispose();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
