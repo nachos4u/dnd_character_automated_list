@@ -1,28 +1,22 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
-using Microsoft.Playwright;
 
 namespace DnD_character_list
 {
     public partial class Form4 : Form
     {
-        public Form1 form1;
+        private Form1 _form1;
         public int DataIDCharacter;
         private bool isLoading = false;
         private GetOldStats oldStats = new GetOldStats();
 
-        public Form4(int value)
+        public Form4(int value, Form1 form1 = null)
         {
             DataIDCharacter = value;
+            _form1 = form1;
             InitializeComponent();
             this.pictureBox2.MouseClick += pictureBox2_Click;
             Load_character();
@@ -30,7 +24,7 @@ namespace DnD_character_list
 
         private void pictureBox2_Click(object sender, EventArgs e)
         {
-            Form3 form3 = new Form3(form1);
+            Form3 form3 = new Form3(_form1);
             form3.Show();
             this.Hide();
         }
@@ -65,7 +59,7 @@ namespace DnD_character_list
 
         private void DataBaseButton_Click(object sender, EventArgs e)
         {
-            Form2 form2 = new Form2(form1, DataIDCharacter);
+            Form2 form2 = new Form2(DataIDCharacter);
             form2.Show();
             this.Hide();
         }
@@ -76,6 +70,12 @@ namespace DnD_character_list
             using (var db = new DDInformationContext())
             {
                 var character = db.Characters.FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
+
+                if (character == null)
+                {
+                    isLoading = false;
+                    return;
+                }
 
                 if (character.Gm != null) gmUpDown.Value = character.Gm.Value;
                 if (character.Mm != null) mmUpDown.Value = character.Mm.Value;
@@ -473,6 +473,8 @@ namespace DnD_character_list
                         .FirstOrDefault();
 
                     var charecter = db.Characters.FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
+                    if (charecter == null) return;
+
                     charecter.IdBackground = backgroundID;
 
                     BackgroundDescTextBox.Text = (background.Description ?? "") + "\n \n" + background.Invetary;
@@ -577,7 +579,6 @@ namespace DnD_character_list
                 {
                     var selectedClassIds = modalForm.SelectedClassIds;
                     var selectedLevels = modalForm.SelectedLevels;
-
                     MessageBox.Show($"Данные получены:\nВыбранные классы: {string.Join(", ", selectedClassIds)}\nВыбранные уровни: {string.Join(", ", selectedLevels)}");
                 }
                 else

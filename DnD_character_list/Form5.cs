@@ -1,15 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Xml.Linq;
-using static System.Net.Mime.MediaTypeNames;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace DnD_character_list
 {
@@ -22,6 +14,7 @@ namespace DnD_character_list
         private List<GroupOfClasses> groups = new List<GroupOfClasses>();
         public List<int> SelectedClassIds { get; private set; }
         public List<int> SelectedLevels { get; private set; }
+
         public Form5()
         {
             InitializeComponent();
@@ -34,7 +27,6 @@ namespace DnD_character_list
         {
             this.Size = new Size(700, 550);
 
-            // Верхняя панель с кнопками
             Panel topPanel = new Panel();
             topPanel.Height = 50;
             topPanel.Dock = DockStyle.Top;
@@ -44,7 +36,6 @@ namespace DnD_character_list
             btnAddGroup.Size = new Size(150, 35);
             btnAddGroup.Location = new Point(10, 10);
             btnAddGroup.Click += BtnAddGroup_Click;
-
 
             btnOK = new Button();
             btnOK.Text = "OK";
@@ -58,19 +49,15 @@ namespace DnD_character_list
             btnCancel.DialogResult = DialogResult.Cancel;
             btnCancel.Size = new Size(80, 30);
 
-
             topPanel.Controls.AddRange(new Control[] { btnAddGroup, btnOK, btnCancel });
 
-            // Таблица для групп
             mainTable = new TableLayoutPanel();
             mainTable.Dock = DockStyle.Fill;
             mainTable.AutoScroll = true;
-            mainTable.AutoSize = true;
             mainTable.ColumnCount = 1;
             mainTable.RowCount = 0;
             mainTable.Padding = new Padding(10);
 
-            // Панель с прокруткой
             Panel scrollPanel = new Panel();
             scrollPanel.Dock = DockStyle.Fill;
             scrollPanel.AutoScroll = true;
@@ -82,10 +69,8 @@ namespace DnD_character_list
 
         private void BtnAddGroup_Click(object sender, EventArgs e)
         {
-            int groupIndex = groups.Count + 1;
             GroupOfClasses group = new GroupOfClasses();
 
-            // Привязываем событие удаления
             group.OnDelete += (g) =>
             {
                 mainTable.Controls.Remove(g.Panel);
@@ -103,9 +88,7 @@ namespace DnD_character_list
         private void ReindexGroups()
         {
             for (int i = 0; i < groups.Count; i++)
-            {
                 groups[i].Index = i + 1;
-            }
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -123,4 +106,3 @@ namespace DnD_character_list
         }
     }
 }
-

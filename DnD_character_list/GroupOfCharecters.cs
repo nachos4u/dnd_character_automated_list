@@ -1,81 +1,46 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using static DnD_character_list.Form3;
-
 namespace DnD_character_list
 {
     internal class GroupOfCharecters : IDisposable
     {
-        public Button Button { get; private set; }
-        public Label Label { get; private set; }
-        public Button DeleteButton { get; private set; }
         public Panel Panel { get; private set; }
-        public GroupBox GroupBox { get; private set; }
-        public int Index { get; set; }
-        private bool _isClosed { get; set; } = false;
-        public bool IsClosed
-        {
-            get => _isClosed;
-            set
-            {
-                if (value != _isClosed)
-                {
-                    OnPropertyChanged();
-                }
-            }
-        }
+        public Button Button { get; private set; }
+        public Button DeleteButton { get; private set; }
+        public int CharacterId { get; set; }
+
+        private readonly Form1 _form1;
 
         public event Action<GroupOfCharecters> OnDelete;
         public event Action<GroupOfCharecters> OnOpen;
 
-        public GroupOfCharecters()
+        public GroupOfCharecters(int characterId, string name, Form1 form1)
         {
-            
+            CharacterId = characterId;
+            _form1 = form1;
 
-            // Основная кнопка персонажа
+            Panel = new Panel();
+            Panel.Size = new Size(200, 80);
+            Panel.Margin = new Padding(5);
+            Panel.BorderStyle = BorderStyle.FixedSingle;
+
             Button = new Button();
-            Button.Size = new Size(250, 80);
-            Button.Location = new Point(0, 40);
-            Button.Text = $"Персонаж {Index}";
+            Button.Size = new Size(150, 60);
+            Button.Location = new Point(5, 10);
+            Button.Text = string.IsNullOrEmpty(name) ? "Безымянный" : name;
             Button.Click += Button_Click;
 
-            // Панель для группы
-            Panel = new Panel();
-            Panel.Size = new Size(250, 120);
-            Panel.Margin = new Padding(0, 0, 0, 10);
-
-            GroupBox = new GroupBox();
-            GroupBox.Size = new Size(250, 120);
-            GroupBox.Location = new Point(0, 0);
-
-            // Label с информацией
-            Label = new Label();
-            Label.Location = new Point(30, 15);
-            Label.Size = new Size(200, 25);
-            Label.Text = "Информация о персонаже";
-            Label.TextAlign = ContentAlignment.MiddleLeft;
-
-            // Кнопка удаления
             DeleteButton = new Button();
             DeleteButton.Text = "🗑️";
-            DeleteButton.Size = new Size(30, 30);
-            DeleteButton.Location = new Point(0, 10);
-            DeleteButton.Click += DeleteButton_Click;
+            DeleteButton.Size = new Size(35, 60);
+            DeleteButton.Location = new Point(158, 10);
             DeleteButton.BackColor = Color.LightCoral;
+            DeleteButton.Click += DeleteButton_Click;
 
-            GroupBox.Controls.AddRange(new Control[] { Button, Label, DeleteButton });
-            Panel.Controls.Add(GroupBox);
-
+            Panel.Controls.AddRange(new Control[] { Button, DeleteButton });
         }
 
         private void Button_Click(object sender, EventArgs e)
         {
-            Form4 form4 = new Form4(Index);
+            Form4 form4 = new Form4(CharacterId, _form1);
             form4.Show();
             OnOpen?.Invoke(this);
         }
@@ -87,14 +52,9 @@ namespace DnD_character_list
 
         public void Dispose()
         {
+            Button?.Dispose();
+            DeleteButton?.Dispose();
             Panel?.Dispose();
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }
