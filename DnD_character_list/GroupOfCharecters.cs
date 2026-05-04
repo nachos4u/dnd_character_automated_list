@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+
 namespace DnD_character_list
 {
     internal class GroupOfCharecters : IDisposable
@@ -5,6 +7,7 @@ namespace DnD_character_list
         public Panel Panel { get; private set; }
         public Button Button { get; private set; }
         public Button DeleteButton { get; private set; }
+        public Label Label { get; private set; }
         public int CharacterId { get; set; }
 
         private readonly Form1 _form1;
@@ -14,28 +17,52 @@ namespace DnD_character_list
 
         public GroupOfCharecters(int characterId, string name, Form1 form1)
         {
-            CharacterId = characterId;
-            _form1 = form1;
+            using (var db = new DDInformationContext())
+            {
+                var character = db.Characters.FirstOrDefault(c => c.IdCharacter == characterId);
 
-            Panel = new Panel();
-            Panel.Size = new Size(200, 80);
-            Panel.Margin = new Padding(5);
-            Panel.BorderStyle = BorderStyle.FixedSingle;
+                CharacterId = characterId;
+                _form1 = form1;
+                string specieName = db.Species.FirstOrDefault(s => s.IdSpecies == character.IdSpecies)?.Name ?? "Неизвестно";
+                var classLevels = character.Levels
+                                    .GroupBy(l => l.IdClassNavigation)
+                                    .Select(g => new { Class = g.Key, MaxLevel = g.Max(l => l.Level1) })
+                                    .ToList();
+                List<string> classInfo = new List<string>();
+                foreach (var cl in classLevels)
+                {
+                    string className = db.Classes.FirstOrDefault(c => c.IdClass == cl.Class.IdClass)?.Name ?? "Неизвестно";
+                    classInfo.Add($"{className} {(int?)cl.MaxLevel ?? 0}");
+                }
+                Panel = new Panel();
+                Panel.Size = new Size(200, 120);
+                Panel.Margin = new Padding(5);
+                Panel.BorderStyle = BorderStyle.FixedSingle;
 
-            Button = new Button();
-            Button.Size = new Size(150, 60);
-            Button.Location = new Point(5, 10);
-            Button.Text = string.IsNullOrEmpty(name) ? "Безымянный" : name;
-            Button.Click += Button_Click;
+                Label = new Label();
+                Label.Size = new Size(150, 60);
+                Label.Location = new Point(5, 10);
+                Label.Font = new Font("Times New Roman", 9f, FontStyle.Regular);
+                Label.Text = string.Join(": ", classInfo) + 
+                    (string.Join(": ", classInfo).Contains(":") == false ? "Неизвестно - " : " - ") + 
+                    (specieName.ToString() == "-" ? " " : specieName.ToString());
 
-            DeleteButton = new Button();
-            DeleteButton.Text = "🗑️";
-            DeleteButton.Size = new Size(35, 60);
-            DeleteButton.Location = new Point(158, 10);
-            DeleteButton.BackColor = Color.LightCoral;
-            DeleteButton.Click += DeleteButton_Click;
+                Button = new Button();
+                Button.Size = new Size(188, 60);
+                Button.Location = new Point(5, 50);
+                Button.Font = new Font("Times New Roman", 9f, FontStyle.Regular);
+                Button.Text = string.IsNullOrEmpty(name) ? "Безымянный" : name;
+                Button.Click += Button_Click;
 
-            Panel.Controls.AddRange(new Control[] { Button, DeleteButton });
+                DeleteButton = new Button();
+                DeleteButton.Text = "🗑️";
+                DeleteButton.Size = new Size(35, 35);
+                DeleteButton.Location = new Point(158, 10);
+                DeleteButton.BackColor = Color.LightCoral;
+                DeleteButton.Click += DeleteButton_Click;
+
+                Panel.Controls.AddRange(new Control[] { Button, DeleteButton, Label });
+            }
         }
 
         private void Button_Click(object sender, EventArgs e)

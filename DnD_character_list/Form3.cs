@@ -147,9 +147,11 @@ namespace DnD_character_list
             label = new Label();
             label.AutoSize = true;
             label.Location = new Point(10, 100);
+            label.Font = new Font("Times New Roman", 9f, FontStyle.Regular);
             label.Text = "Ваши персонажи";
 
             btnAddGroup = new Button();
+            btnAddGroup.Font = new Font("Times New Roman", 9f, FontStyle.Regular);
             btnAddGroup.Text = "➕ Добавить персонажа";
             btnAddGroup.Size = new Size(250, 35);
             btnAddGroup.Location = new Point(100, 10);

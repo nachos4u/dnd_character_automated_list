@@ -583,15 +583,51 @@ namespace DnD_character_list
                 DialogResult result = modalForm.ShowDialog();
                 if (result == DialogResult.OK)
                 {
-                    var selectedClassIds = modalForm.SelectedClassIds;
-                    var selectedLevels = modalForm.SelectedLevels;
-                    MessageBox.Show($"Данные получены:\nВыбранные классы: {string.Join(", ", selectedClassIds)}\nВыбранные уровни: {string.Join(", ", selectedLevels)}");
+                    using (var db = new DDInformationContext()) {
+                        var selectedClassIds = modalForm.SelectedClassIds;
+                        var selectedLevels = modalForm.SelectedLevels;
+                        for (int i = 0; i < selectedClassIds.LongCount(); i++) {
+                            SetClassLevel(db.Characters.FirstOrDefault(c => c.IdCharacter == DataIDCharacter),
+                                selectedClassIds[i], selectedLevels[i], db);
+                        }
+                        MessageBox.Show($"Данные получены:\nВыбранные классы: {string.Join(", ", selectedClassIds)}\nВыбранные уровни: {string.Join(", ", selectedLevels)}");
+                    }
                 }
                 else
                 {
                     MessageBox.Show("Операция отменена, данные не получены");
                 }
             }
+        }
+
+        public void SetClassLevel(Character character, int classId, int newMaxLevel, DDInformationContext db)
+        {
+            var currentLevels = character.Levels
+                .Where(l => l.IdClass == classId)
+                .ToList();
+
+            int currentMax = currentLevels.Any() ? currentLevels.Max(l => l.Level1) : 0;
+
+            if (newMaxLevel > currentMax)
+            {
+                var toAdd = db.Levels
+                    .Where(l => l.IdClass == classId && l.Level1 > currentMax && l.Level1 <= newMaxLevel)
+                    .ToList();
+
+                foreach (var level in toAdd)
+                    character.Levels.Add(level);
+            }
+            else if (newMaxLevel < currentMax)
+            {
+                var toRemove = currentLevels
+                    .Where(l => l.Level1 > newMaxLevel)
+                    .ToList();
+
+                foreach (var level in toRemove)
+                    character.Levels.Remove(level);
+            }
+
+            db.SaveChanges();
         }
     }
 }
