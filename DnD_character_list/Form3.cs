@@ -129,7 +129,7 @@ namespace DnD_character_list
 
         private void Form3_Load(object sender, EventArgs e)
         {
-            this.Size = new Size(700, 550);
+            this.Size = new Size(820, 550);
 
             Panel topPanel = new Panel();
             topPanel.Height = 120;

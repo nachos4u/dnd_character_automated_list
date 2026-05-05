@@ -31,7 +31,6 @@
             pictureBox1 = new PictureBox();
             pictureBox2 = new PictureBox();
             NameTextBox = new TextBox();
-            ClassList = new ListBox();
             NameLable = new Label();
             BackgroundLable = new Label();
             SpesiesLable = new Label();
@@ -188,6 +187,7 @@
             BackgroundDescLable = new Label();
             BackgroundDescTextBox = new TextBox();
             ToolsTextBox = new TextBox();
+            ClassNameTextBox = new TextBox();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox2).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox3).BeginInit();
@@ -241,14 +241,6 @@
             NameTextBox.Name = "NameTextBox";
             NameTextBox.Size = new Size(337, 27);
             NameTextBox.TabIndex = 3;
-            // 
-            // ClassList
-            // 
-            ClassList.FormattingEnabled = true;
-            ClassList.Location = new Point(333, 333);
-            ClassList.Name = "ClassList";
-            ClassList.Size = new Size(165, 64);
-            ClassList.TabIndex = 6;
             // 
             // NameLable
             // 
@@ -1414,9 +1406,9 @@
             // 
             // CurDiceHPUpDown
             // 
-            CurDiceHPUpDown.Location = new Point(997, 296);
+            CurDiceHPUpDown.Location = new Point(993, 296);
             CurDiceHPUpDown.Name = "CurDiceHPUpDown";
-            CurDiceHPUpDown.Size = new Size(38, 27);
+            CurDiceHPUpDown.Size = new Size(49, 27);
             CurDiceHPUpDown.TabIndex = 180;
             // 
             // MaxHPUpDown
@@ -1424,7 +1416,7 @@
             MaxHPUpDown.Location = new Point(997, 344);
             MaxHPUpDown.Maximum = new decimal(new int[] { 100000, 0, 0, 0 });
             MaxHPUpDown.Name = "MaxHPUpDown";
-            MaxHPUpDown.Size = new Size(54, 27);
+            MaxHPUpDown.Size = new Size(61, 27);
             MaxHPUpDown.TabIndex = 181;
             // 
             // SpeedUpDown
@@ -1579,10 +1571,10 @@
             // 
             // SpeedSkillTextBox
             // 
-            SpeedSkillTextBox.Location = new Point(148, 1706);
+            SpeedSkillTextBox.Location = new Point(148, 1794);
             SpeedSkillTextBox.Multiline = true;
             SpeedSkillTextBox.Name = "SpeedSkillTextBox";
-            SpeedSkillTextBox.Size = new Size(375, 138);
+            SpeedSkillTextBox.Size = new Size(375, 50);
             SpeedSkillTextBox.TabIndex = 199;
             // 
             // pictureBox6
@@ -1633,8 +1625,16 @@
             ToolsTextBox.Location = new Point(148, 1578);
             ToolsTextBox.Multiline = true;
             ToolsTextBox.Name = "ToolsTextBox";
-            ToolsTextBox.Size = new Size(375, 129);
+            ToolsTextBox.Size = new Size(375, 210);
             ToolsTextBox.TabIndex = 205;
+            // 
+            // ClassNameTextBox
+            // 
+            ClassNameTextBox.Location = new Point(332, 316);
+            ClassNameTextBox.Multiline = true;
+            ClassNameTextBox.Name = "ClassNameTextBox";
+            ClassNameTextBox.Size = new Size(166, 78);
+            ClassNameTextBox.TabIndex = 206;
             // 
             // Form4
             // 
@@ -1642,6 +1642,7 @@
             AutoScaleMode = AutoScaleMode.Font;
             AutoScroll = true;
             ClientSize = new Size(1334, 1175);
+            Controls.Add(ClassNameTextBox);
             Controls.Add(ToolsTextBox);
             Controls.Add(BackgroundDescTextBox);
             Controls.Add(BackgroundDescLable);
@@ -1798,7 +1799,6 @@
             Controls.Add(SpesiesLable);
             Controls.Add(BackgroundLable);
             Controls.Add(NameLable);
-            Controls.Add(ClassList);
             Controls.Add(NameTextBox);
             Controls.Add(pictureBox2);
             Controls.Add(pictureBox1);
@@ -1842,7 +1842,6 @@
         private PictureBox pictureBox1;
         private PictureBox pictureBox2;
         private TextBox NameTextBox;
-        private ListBox ClassList;
         private Label NameLable;
         private Label BackgroundLable;
         private Label SpesiesLable;
@@ -1999,5 +1998,6 @@
         private Label BackgroundDescLable;
         private TextBox BackgroundDescTextBox;
         private TextBox ToolsTextBox;
+        private TextBox ClassNameTextBox;
     }
 }

@@ -95,6 +95,23 @@ namespace DnD_character_list
 
         }
 
+        public void SetValues(int classId, int level)
+        {
+            var dataSource = ComboBox.DataSource as List<Class>;
+            if (dataSource != null)
+            {
+                int idx = dataSource.FindIndex(c => c.IdClass == classId);
+                if (idx >= 0)
+                {
+                    ComboBox.SelectedIndex = idx;
+                    ClassId = classId;
+                    TextBox.Text = dataSource[idx].Description ?? "";
+                }
+            }
+            NumericUpDown.Value = Math.Max(NumericUpDown.Minimum, Math.Min(NumericUpDown.Maximum, level));
+            Level = (int)NumericUpDown.Value;
+        }
+
         private void NumericUpDown_ValueChanged(object? sender, EventArgs e)
         {
             Level = (int)NumericUpDown.Value;

@@ -12,15 +12,22 @@ namespace DnD_character_list
         private Button btnOK;
         private Button btnCancel;
         private List<GroupOfClasses> groups = new List<GroupOfClasses>();
+        private List<(GroupOfClasses group, int classId, int level)> _pendingInit = new();
         public List<int> SelectedClassIds { get; private set; }
         public List<int> SelectedLevels { get; private set; }
 
-        public Form5()
+        public Form5(List<int> existingClassIds = null, List<int> existingLevels = null)
         {
             InitializeComponent();
             SelectedClassIds = new List<int>();
             SelectedLevels = new List<int>();
             SetupForm();
+            if (existingClassIds != null && existingLevels != null)
+            {
+                for (int i = 0; i < existingClassIds.Count; i++)
+                    AddGroup(existingClassIds[i], existingLevels[i]);
+            }
+
         }
 
         private void SetupForm()
@@ -67,9 +74,12 @@ namespace DnD_character_list
             Controls.Add(topPanel);
         }
 
-        private void BtnAddGroup_Click(object sender, EventArgs e)
+        private void BtnAddGroup_Click(object sender, EventArgs e) => AddGroup();
+
+        private void AddGroup(int initClassId = 0, int initLevel = 1)
         {
             GroupOfClasses group = new GroupOfClasses();
+            
 
             group.OnDelete += (g) =>
             {
@@ -83,6 +93,16 @@ namespace DnD_character_list
             mainTable.Controls.Add(group.Panel);
             mainTable.RowCount = groups.Count;
             mainTable.Height = groups.Count * 120;
+            if (initClassId > 0)
+                _pendingInit.Add((group, initClassId, initLevel));
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            foreach (var (g, classId, level) in _pendingInit)
+                g.SetValues(classId, level);
+            _pendingInit.Clear();
         }
 
         private void ReindexGroups()

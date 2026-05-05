@@ -19,7 +19,10 @@ namespace DnD_character_list
         {
             using (var db = new DDInformationContext())
             {
-                var character = db.Characters.FirstOrDefault(c => c.IdCharacter == characterId);
+                var character = db.Characters
+                    .Include(c => c.Levels)
+                    .ThenInclude(l => l.IdClassNavigation)
+                    .FirstOrDefault(c => c.IdCharacter == characterId);
 
                 CharacterId = characterId;
                 _form1 = form1;
@@ -35,21 +38,21 @@ namespace DnD_character_list
                     classInfo.Add($"{className} {(int?)cl.MaxLevel ?? 0}");
                 }
                 Panel = new Panel();
-                Panel.Size = new Size(200, 120);
+                Panel.Size = new Size(250, 170);
                 Panel.Margin = new Padding(5);
                 Panel.BorderStyle = BorderStyle.FixedSingle;
 
                 Label = new Label();
-                Label.Size = new Size(150, 60);
+                Label.Size = new Size(200, 85);
                 Label.Location = new Point(5, 10);
                 Label.Font = new Font("Times New Roman", 9f, FontStyle.Regular);
-                Label.Text = string.Join(": ", classInfo) + 
-                    (string.Join(": ", classInfo).Contains(":") == false ? "Неизвестно - " : " - ") + 
+                Label.Text = string.Join(", ", classInfo) + 
+                    (classInfo.LongCount() == 0 ? "Неизвестно - " : " - ") + 
                     (specieName.ToString() == "-" ? " " : specieName.ToString());
 
                 Button = new Button();
-                Button.Size = new Size(188, 60);
-                Button.Location = new Point(5, 50);
+                Button.Size = new Size(238, 85);
+                Button.Location = new Point(5, 75);
                 Button.Font = new Font("Times New Roman", 9f, FontStyle.Regular);
                 Button.Text = string.IsNullOrEmpty(name) ? "Безымянный" : name;
                 Button.Click += Button_Click;
@@ -57,7 +60,7 @@ namespace DnD_character_list
                 DeleteButton = new Button();
                 DeleteButton.Text = "🗑️";
                 DeleteButton.Size = new Size(35, 35);
-                DeleteButton.Location = new Point(158, 10);
+                DeleteButton.Location = new Point(208, 10);
                 DeleteButton.BackColor = Color.LightCoral;
                 DeleteButton.Click += DeleteButton_Click;
 

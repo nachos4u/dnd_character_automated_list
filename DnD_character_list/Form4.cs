@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -69,7 +70,9 @@ namespace DnD_character_list
             isLoading = true;
             using (var db = new DDInformationContext())
             {
-                var character = db.Characters.FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
+                var character = db.Characters
+                            .Include(c => c.Levels).ThenInclude(l => l.IdClassNavigation)
+                            .FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
 
                 if (character == null)
                 {
@@ -198,6 +201,8 @@ namespace DnD_character_list
                 comboSpecies.SelectedValue = character.IdSpecies;
                 comboBackground.SelectedValue = character.IdBackground;
 
+                UpdateLevelButton(character);
+
                 if (character.Speed != null && character.Speed != 0)
                     SpeedUpDown.Value = character.Speed.Value;
 
@@ -231,6 +236,7 @@ namespace DnD_character_list
                     BackgroundDescTextBox.Text = (bg.Description ?? "") + "\n \n" + bg.Invetary;
                     if (bg.ToolOwnership != null) ToolsTextBox.Text = bg.ToolOwnership;
                 }
+                CurDiceHPUpDown.Value = (int)character.TimeHitpoints;
 
                 isLoading = false;
             }
@@ -306,6 +312,7 @@ namespace DnD_character_list
                     }
 
                     character.PossesionNew = possnew;
+                    character.TimeHitpoints = (int)CurDiceHPUpDown.Value;
                     db.SaveChanges();
                     MessageBox.Show("Сохранено!");
                 }
@@ -578,26 +585,140 @@ namespace DnD_character_list
 
         private void LevelButton_Click(object sender, EventArgs e)
         {
-            using (Form5 modalForm = new Form5())
+            var existingClassIds = new List<int>();
+            var existingLevels = new List<int>();
+
+            using (var db = new DDInformationContext())
+            {
+                var character = db.Characters
+                    .Include(c => c.Levels)
+                    .FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
+
+                if (character != null)
+                {
+                    foreach (var cl in character.Levels.GroupBy(l => l.IdClass))
+                    {
+                        existingClassIds.Add(cl.Key);
+                        existingLevels.Add(cl.Max(l => l.Level1));
+                    }
+                }
+            }
+
+            using (Form5 modalForm = new Form5(existingClassIds, existingLevels))
             {
                 DialogResult result = modalForm.ShowDialog();
                 if (result == DialogResult.OK)
                 {
-                    using (var db = new DDInformationContext()) {
+                    using (var db = new DDInformationContext())
+                    {
+                        var character = db.Characters
+                            .Include(c => c.Levels).ThenInclude(l => l.IdClassNavigation)
+                            .FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
+
                         var selectedClassIds = modalForm.SelectedClassIds;
                         var selectedLevels = modalForm.SelectedLevels;
-                        for (int i = 0; i < selectedClassIds.LongCount(); i++) {
-                            SetClassLevel(db.Characters.FirstOrDefault(c => c.IdCharacter == DataIDCharacter),
-                                selectedClassIds[i], selectedLevels[i], db);
+
+                        foreach (var removedClassId in existingClassIds.Except(selectedClassIds))
+                            SetClassLevel(character, removedClassId, 0, db);
+
+                        for (int i = 0; i < selectedClassIds.Count; i++)
+                            SetClassLevel(character, selectedClassIds[i], selectedLevels[i], db);
+
+                        UpdateLevelButton(character);
+                        if (isLoading) return;
+                        character = db.Characters
+                            .Include(c => c.Levels).ThenInclude(l => l.IdClassNavigation)
+                            .FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
+                        var chosenClasesIds = character.Levels
+                                .Select(l => l.IdClassNavigation)
+                                .DistinctBy(c => c.IdClass)
+                                .ToList();
+                        List<List<Level>> chosenLevels = new List<List<Level>>();
+                        foreach (var cls in chosenClasesIds)
+                        {
+                            chosenLevels.Add(character.Levels
+                                .Where(l => l.IdClass == cls.IdClass)
+                                .ToList());
                         }
-                        MessageBox.Show($"Данные получены:\nВыбранные классы: {string.Join(", ", selectedClassIds)}\nВыбранные уровни: {string.Join(", ", selectedLevels)}");
+                        string classNameText = "";
+                        string classTools = "";
+                        string classSkills = "";
+                        List<string> classPoss = new List<string>();
+                        int possNumber;
+                        string classHitDice = "";
+                        string classSpas = "";
+                        bool isMultiClass = chosenClasesIds.Count > 1;
+                        string levelCels;
+                        string levelSkills;
+                        string levelFithers;
+                        List<List<string>> classNames = new List<List<string>>();
+                        List<string> poss = new List<string>();
+                        var sls = chosenClasesIds[0];
+                            var chosenClases = db.Classes
+                                .Include(c => c.IdHitDiceNavigation)
+                                .FirstOrDefault(c => c.IdClass == sls.IdClass);
+                        foreach (var cls in chosenClasesIds)
+                        {
+                            classNameText += cls.Name + " \n";
+                        }
+                            poss = chosenClases.Possession.Split('\n').ToList();
+                            foreach (var pos in poss) {
+                                if (!string.IsNullOrEmpty(pos)) {
+                                    List<string> po = pos.Split(": ").ToList();
+                                    switch (po[0]) {
+                                        case "Доспехи": classTools += "Доспехи: " + po[1] + "\n"; break;
+                                        case "Оружие": classTools += "Оружие: " + po[1] + "\n"; break;
+                                        case "Инструменты": classTools += "Инструменты: " + po[1] + "\n"; break;
+                                        case "Спаcброски": classSpas += po[1]; break;
+                                        case "Навыки": switch (po[1]) {
+                                            case "Выберите 4 навыка из следующих": possNumber = 4; break;
+                                            case "Выберите 3 навыка из следующих": possNumber = 3; break;
+                                            case "Выберите 2 навыка из следующих": possNumber = 2; break;
+                                        } 
+                                        classPoss = po[2].Split(", ").ToList();
+                                        break;
+                                    }
+                                }
+                            }
+                        ToolsTextBox.Text += "\n" + classTools;
+                        ClassNameTextBox.Text = classNameText;
+                        List<string> spases = classSpas.Split(", ").ToList();
+                        foreach (var spas in spases)
+                        {
+                            switch (spas)
+                            {
+                                case "Сила": StrengthCheckBox.Checked = true; break;
+                                case "Ловкость": AgilityCheckBox.Checked = true; break;
+                                case "Телосложение": StaminaCheckBox.Checked = true; break;
+                                case "Интеллект": IntelligenceCheckBox.Checked = true; break;
+                                case "Мудрость": WisdomCheckBox.Checked = true; break;
+                                case "Харизма": CharismaCheckBox.Checked = true; break;
+                            }
+                        }
+                        foreach (var level in chosenLevels) {
+                            foreach (var lev in level) {
+
+                            }
+                        }
                     }
                 }
-                else
-                {
-                    MessageBox.Show("Операция отменена, данные не получены");
-                }
             }
+        }
+
+        private void UpdateLevelButton(Character character)
+        {
+            if (character?.Levels == null || !character.Levels.Any())
+            {
+                LevelButton.Text = "";
+                return;
+            }
+
+            int totalLevel = character.Levels
+                .GroupBy(l => l.IdClass)
+                .Sum(g => g.Max(l => l.Level1));
+            DiceHPLable.Text = totalLevel.ToString();
+
+            LevelButton.Text = totalLevel.ToString();
         }
 
         public void SetClassLevel(Character character, int classId, int newMaxLevel, DDInformationContext db)
