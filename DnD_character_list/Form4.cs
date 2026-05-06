@@ -14,12 +14,69 @@ namespace DnD_character_list
         private bool isLoading = false;
         private GetOldStats oldStats = new GetOldStats();
 
+        // Анимация выбора навыков
+        private readonly System.Windows.Forms.Timer _animTimer = new System.Windows.Forms.Timer { Interval = 500 };
+        private List<CheckBox> _pendingCheckBoxes = new List<CheckBox>();
+        private int _pendingSkillCount = 0;
+        private bool _animState = false;
+
+        // Вторая страница для класса
+        private TextBox FullClassTextBox2 = null;
+
+        // Таблица ячеек мультикласса (D&D 5e PHB, эффективный уровень заклинателя 1–20)
+        private static readonly int[][] _multiclassSlotTable =
+        {
+            new[]{2,0,0,0,0,0,0,0,0}, new[]{3,0,0,0,0,0,0,0,0}, new[]{4,2,0,0,0,0,0,0,0},
+            new[]{4,3,0,0,0,0,0,0,0}, new[]{4,3,2,0,0,0,0,0,0}, new[]{4,3,3,0,0,0,0,0,0},
+            new[]{4,3,3,1,0,0,0,0,0}, new[]{4,3,3,2,0,0,0,0,0}, new[]{4,3,3,3,1,0,0,0,0},
+            new[]{4,3,3,3,2,0,0,0,0}, new[]{4,3,3,3,2,1,0,0,0}, new[]{4,3,3,3,2,1,0,0,0},
+            new[]{4,3,3,3,2,1,1,0,0}, new[]{4,3,3,3,2,1,1,0,0}, new[]{4,3,3,3,2,1,1,1,0},
+            new[]{4,3,3,3,2,1,1,1,0}, new[]{4,3,3,3,2,1,1,1,1}, new[]{4,3,3,3,3,1,1,1,1},
+            new[]{4,3,3,3,3,2,1,1,1}, new[]{4,3,3,3,3,2,2,1,1},
+        };
+
         public Form4(int value, Form1 form1 = null)
         {
             DataIDCharacter = value;
             _form1 = form1;
             InitializeComponent();
+
+            // Fix 6: сдвигаем все контролы с Y >= 3778 вниз на 1794px, чтобы вставить вторую страницу класса
+            const int shiftY = 1794;
+            const int splitY = 3778;
+            foreach (Control ctrl in this.Controls)
+            {
+                if (ctrl.Location.Y >= splitY)
+                    ctrl.Location = new Point(ctrl.Location.X, ctrl.Location.Y + shiftY);
+            }
+
+            // Добавляем вторую страницу (pictureBox + label + textbox)
+            // ВАЖНО: сначала добавляем label и textbox, потом pictureBox.SendToBack(),
+            // иначе pictureBox окажется поверх них (Controls.Add добавляет в конец = сзади).
+            var newPb = new PictureBox();
+            newPb.Image = Properties.Resources.SecondList;
+            newPb.Location = new Point(45, 3778);
+            newPb.Size = new Size(1240, 1754);
+            newPb.TabStop = false;
+
+            var newLbl = new Label();
+            newLbl.AutoSize = true;
+            newLbl.Location = new Point(525, 3869);
+            newLbl.Text = "Полная информация о классе (продолжение)";
+
+            FullClassTextBox2 = new TextBox();
+            FullClassTextBox2.Location = new Point(148, 3920);
+            FullClassTextBox2.Multiline = true;
+            FullClassTextBox2.ScrollBars = ScrollBars.Vertical;
+            FullClassTextBox2.Size = new Size(1036, 1528);
+
+            this.Controls.Add(newPb);
+            this.Controls.Add(newLbl);
+            this.Controls.Add(FullClassTextBox2);
+            newPb.SendToBack(); // вызываем ПОСЛЕ добавления всех трёх — уходит за label и textbox
+
             this.pictureBox2.MouseClick += pictureBox2_Click;
+            _animTimer.Tick += AnimTimer_Tick;
             Load_character();
         }
 
@@ -72,6 +129,7 @@ namespace DnD_character_list
             {
                 var character = db.Characters
                             .Include(c => c.Levels).ThenInclude(l => l.IdClassNavigation)
+                            .Include(c => c.IdBackgroundNavigation)
                             .FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
 
                 if (character == null)
@@ -203,6 +261,11 @@ namespace DnD_character_list
 
                 UpdateLevelButton(character);
 
+                ClassNameTextBox.Text = string.Join("\n", character.Levels
+                    .Select(l => l.IdClassNavigation?.Name)
+                    .Where(n => !string.IsNullOrEmpty(n))
+                    .Distinct());
+
                 if (character.Speed != null && character.Speed != 0)
                     SpeedUpDown.Value = character.Speed.Value;
 
@@ -232,11 +295,17 @@ namespace DnD_character_list
 
                 var bg = db.Backgrounds.FirstOrDefault(b => b.IdBackground == character.IdBackground);
                 if (bg != null)
-                {
                     BackgroundDescTextBox.Text = (bg.Description ?? "") + "\n \n" + bg.Invetary;
-                    if (bg.ToolOwnership != null) ToolsTextBox.Text = bg.ToolOwnership;
-                }
+
                 CurDiceHPUpDown.Value = (int)character.TimeHitpoints;
+
+                FillClassInfo(character);
+
+                if (character.SkillsPending && !string.IsNullOrEmpty(character.PendingSkillChoices))
+                {
+                    var skillList = character.PendingSkillChoices.Split(';').ToList();
+                    StartSkillAnimation(skillList, character.PendingSkillCount ?? 2);
+                }
 
                 isLoading = false;
             }
@@ -323,13 +392,6 @@ namespace DnD_character_list
             }
         }
 
-        private async void button1_Click(object sender, EventArgs e)
-        {
-            var importerClasses = new ClassesImporter();
-            var importerBackgrounds = new BackgroundImporter();
-            await importerClasses.ImportClassAsync();
-            await importerBackgrounds.ImportBackgroundAsync();
-        }
 
         private void comboSpecies_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -613,6 +675,7 @@ namespace DnD_character_list
                     {
                         var character = db.Characters
                             .Include(c => c.Levels).ThenInclude(l => l.IdClassNavigation)
+                            .Include(c => c.IdBackgroundNavigation)
                             .FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
 
                         var selectedClassIds = modalForm.SelectedClassIds;
@@ -640,52 +703,69 @@ namespace DnD_character_list
                                 .Where(l => l.IdClass == cls.IdClass)
                                 .ToList());
                         }
-                        string classNameText = "";
-                        string classTools = "";
-                        string classSkills = "";
-                        List<string> classPoss = new List<string>();
-                        int possNumber;
-                        string classHitDice = "";
-                        string classSpas = "";
-                        bool isMultiClass = chosenClasesIds.Count > 1;
-                        string levelCels;
-                        string levelSkills;
-                        string levelFithers;
-                        List<List<string>> classNames = new List<List<string>>();
-                        List<string> poss = new List<string>();
-                        var sls = chosenClasesIds[0];
-                            var chosenClases = db.Classes
-                                .Include(c => c.IdHitDiceNavigation)
-                                .FirstOrDefault(c => c.IdClass == sls.IdClass);
-                        foreach (var cls in chosenClasesIds)
+
+                        // Fix 5: если классов нет — очищаем и выходим
+                        if (!chosenClasesIds.Any())
                         {
-                            classNameText += cls.Name + " \n";
+                            ClassNameTextBox.Text = "";
+                            FillClassInfo(character);
+                            return;
                         }
-                            poss = chosenClases.Possession.Split('\n').ToList();
-                            foreach (var pos in poss) {
-                                if (!string.IsNullOrEmpty(pos)) {
-                                    List<string> po = pos.Split(": ").ToList();
-                                    switch (po[0]) {
-                                        case "Доспехи": classTools += "Доспехи: " + po[1] + "\n"; break;
-                                        case "Оружие": classTools += "Оружие: " + po[1] + "\n"; break;
-                                        case "Инструменты": classTools += "Инструменты: " + po[1] + "\n"; break;
-                                        case "Спаcброски": classSpas += po[1]; break;
-                                        case "Навыки": switch (po[1]) {
-                                            case "Выберите 4 навыка из следующих": possNumber = 4; break;
-                                            case "Выберите 3 навыка из следующих": possNumber = 3; break;
-                                            case "Выберите 2 навыка из следующих": possNumber = 2; break;
-                                        } 
-                                        classPoss = po[2].Split(", ").ToList();
+
+                        // Fix 1: имя класса с подклассом (полное cls.Name)
+                        ClassNameTextBox.Text = string.Join("\n", chosenClasesIds.Select(cls => cls.Name));
+
+                        // Парсим Possession первого класса
+                        string classSpas = "";
+                        List<string> classPossOld = new List<string>();
+                        List<string> classPoss = new List<string>();
+                        int possNumber = 2;
+                        var firstClassObj = db.Classes.FirstOrDefault(c => c.IdClass == chosenClasesIds[0].IdClass);
+                        if (firstClassObj != null)
+                        {
+                            foreach (var pos in firstClassObj.Possession.Split('\n'))
+                            {
+                                if (string.IsNullOrEmpty(pos)) continue;
+                                var po = pos.Split(": ", 3);
+                                if (po.Length < 2) continue;
+                                switch (po[0])
+                                {
+                                    case "Спаcброски": classSpas = po[1]; break;
+                                    case "Навыки":
+                                        if (po[1].Contains("4")) possNumber = 4;
+                                        else if (po[1].Contains("3")) possNumber = 3;
+                                        else possNumber = 2;
+                                        if (po.Length >= 3)
+                                        {
+                                            var map = BuildSkillMap();
+                                            Background back;
+                                            var ch = db.Characters.FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
+                                            back = db.Backgrounds.FirstOrDefault(b => b.IdBackground == ch.IdBackground);
+                                            var backPoss = back?.Possesion.Split(";");
+                                            classPossOld = (po[2].Split(", ").ToList());
+                                            foreach (var cls in classPossOld) {
+                                                if (!backPoss.Contains(cls)) {
+                                                    classPoss.Add(cls);
+                                                }
+                                            }
+                                        }
                                         break;
-                                    }
                                 }
                             }
-                        ToolsTextBox.Text += "\n" + classTools;
-                        ClassNameTextBox.Text = classNameText;
-                        List<string> spases = classSpas.Split(", ").ToList();
-                        foreach (var spas in spases)
+                        }
+
+                        // Fix 4: очищаем старые спасброски перед применением новых
+                        StrengthCheckBox.Checked = false;
+                        AgilityCheckBox.Checked = false;
+                        StaminaCheckBox.Checked = false;
+                        IntelligenceCheckBox.Checked = false;
+                        WisdomCheckBox.Checked = false;
+                        CharismaCheckBox.Checked = false;
+
+                        // Спасброски
+                        foreach (var spas in classSpas.Split(", "))
                         {
-                            switch (spas)
+                            switch (spas.Trim())
                             {
                                 case "Сила": StrengthCheckBox.Checked = true; break;
                                 case "Ловкость": AgilityCheckBox.Checked = true; break;
@@ -695,11 +775,27 @@ namespace DnD_character_list
                                 case "Харизма": CharismaCheckBox.Checked = true; break;
                             }
                         }
-                        foreach (var level in chosenLevels) {
-                            foreach (var lev in level) {
 
-                            }
+                        // Смена первичного класса → MessageBox + анимация
+                        int? oldPrimaryId = existingClassIds.Count > 0 ? existingClassIds[0] : (int?)null;
+                        int? newPrimaryId = selectedClassIds.Count > 0 ? selectedClassIds[0] : (int?)null;
+                        if (newPrimaryId.HasValue && newPrimaryId != oldPrimaryId && classPoss.Any())
+                        {
+                            MessageBox.Show(
+                                $"Выберите {possNumber} навыка из следующих:\n{string.Join(", ", classPoss)}",
+                                "Выбор навыков класса", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                            character.PrimaryClassId = newPrimaryId;
+                            character.SkillsPending = true;
+                            character.PendingSkillChoices = string.Join(";", classPoss);
+                            character.PendingSkillCount = possNumber;
+                            db.SaveChanges();
+
+                            StartSkillAnimation(classPoss, possNumber);
                         }
+
+                        // Заполняем все поля класса
+                        FillClassInfo(character);
 
                     }
                 }
@@ -721,6 +817,369 @@ namespace DnD_character_list
 
             LevelButton.Text = totalLevel.ToString();
         }
+
+        // ─── Вспомогательные методы ────────────────────────────────────────────────
+
+        private static Dictionary<string, string> ParseCells(string cells)
+        {
+            var d = new Dictionary<string, string>();
+            if (string.IsNullOrEmpty(cells)) return d;
+            foreach (var part in cells.Split(';'))
+            {
+                var kv = part.Split(':', 2);
+                if (kv.Length == 2 && kv[0].Length > 0)
+                    d[kv[0].Trim()] = kv[1].Trim();
+            }
+            return d;
+        }
+
+        private static string GetBaseClassName(string name) => name.Split(':')[0].Trim();
+
+        private static int GetCasterLevel(string className, int classLevel)
+        {
+            return GetBaseClassName(className) switch
+            {
+                "Бард" or "Жрец" or "Друид" or "Чародей" or "Волшебник" => classLevel,
+                "Паладин" or "Следопыт" => classLevel / 2,
+                "Плут" or "Воин" => classLevel / 3,
+                _ => 0
+            };
+        }
+
+        private static int GetDivineChannelCount(string className, int classLevel)
+        {
+            return GetBaseClassName(className) switch
+            {
+                "Жрец" when classLevel >= 18 => 3,
+                "Жрец" when classLevel >= 6  => 2,
+                "Жрец" when classLevel >= 2  => 1,
+                "Паладин" when classLevel >= 3 => 1,
+                _ => 0
+            };
+        }
+
+        private static string GetMulticlassEquipment(string className)
+        {
+            return GetBaseClassName(className) switch
+            {
+                "Бард"      => "Лёгкие доспехи, 1 навык, 1 муз. инструмент",
+                "Жрец"      => "Лёгкие и средние доспехи, щиты",
+                "Друид"     => "Лёгкие и средние доспехи, щиты",
+                "Воин"      => "Лёгкие и средние доспехи, щиты, простое и воинское оружие",
+                "Следопыт"  => "Лёгкие и средние доспехи, щиты, простое и воинское оружие",
+                "Паладин"   => "Лёгкие и средние доспехи, щиты, простое и воинское оружие",
+                "Плут"      => "Лёгкие доспехи, 1 навык, воровские инструменты",
+                "Монах"     => "Простое оружие, короткие мечи",
+                "Варвар"    => "Щиты, воинское оружие",
+                "Колдун"    => "Лёгкие доспехи, простое оружие",
+                _           => "—"
+            };
+        }
+
+        // ─── Заполнение полей класса ───────────────────────────────────────────────
+
+        private void FillClassInfo(Character character)
+        {
+            var cellLabels = new Label[] {
+                CellLevel1Lable, CellLevel2Lable, CellLevel3Lable,
+                CellLevel4Lable, CellLevel5Lable, CellLevel6Lable,
+                CellLevel7Lable, CellLevel8Lable, CellLevel9Lable
+            };
+
+            // Фоновые инструменты
+            string bgTools = character.IdBackgroundNavigation?.ToolOwnership ?? "";
+            var toolsSb = new System.Text.StringBuilder();
+            if (!string.IsNullOrEmpty(bgTools))
+                toolsSb.AppendLine(bgTools.TrimEnd());
+
+            if (!character.Levels.Any())
+            {
+                ToolsTextBox.Text = toolsSb.ToString();
+                FullClassTextBox.Text = "";
+                if (FullClassTextBox2 != null) FullClassTextBox2.Text = "";
+                ClassSkillsShortTextBox.Text = "";
+                BMLable.Text = "";
+                foreach (var lbl in cellLabels) lbl.Text = "";
+                return;
+            }
+
+            // Группируем по классу
+            var classGroups = character.Levels
+                .GroupBy(l => l.IdClass)
+                .Select(g => new
+                {
+                    Class   = g.First().IdClassNavigation,
+                    MaxLvl  = g.Max(l => l.Level1),
+                    Levels  = g.OrderBy(l => l.Level1).ToList()
+                }).ToList();
+
+            bool isMulti = classGroups.Count > 1;
+            int totalLvl = classGroups.Sum(g => g.MaxLvl);
+
+            // Fix 3: инструменты/доспехи/оружие первого класса (всегда, даже в мультиклассе)
+            var firstCls = classGroups[0].Class;
+            if (!string.IsNullOrEmpty(firstCls.Possession))
+            {
+                var classEquipSb = new System.Text.StringBuilder();
+                foreach (var pos in firstCls.Possession.Split('\n'))
+                {
+                    if (string.IsNullOrEmpty(pos)) continue;
+                    var po = pos.Split(": ", 2);
+                    if (po.Length < 2) continue;
+                    var cat = po[0].Trim();
+                    if (cat == "Доспехи" || cat == "Оружие" || cat == "Инструменты")
+                        classEquipSb.AppendLine($"{cat}: {po[1].Trim()}");
+                }
+                if (classEquipSb.Length > 0)
+                {
+                    if (toolsSb.Length > 0) toolsSb.AppendLine();
+                    toolsSb.AppendLine($"=== {GetBaseClassName(firstCls.Name)} ===");
+                    toolsSb.Append(classEquipSb);
+                }
+            }
+            ToolsTextBox.Text = toolsSb.ToString();
+
+            // ── БМ ──────────────────────────────────────────────────────────────────
+            int bm = 2 + (totalLvl - 1) / 4;
+            BMLable.Text = $"+{bm}";
+
+            // Fix 6: FullClassTextBox + FullClassTextBox2 (полные Skills всех уровней)
+            // Один класс → уровни 1-10 в box1, 11-20 в box2
+            // Несколько классов → первая половина в box1, вторая в box2
+            {
+                var sb1 = new System.Text.StringBuilder();
+                var sb2 = new System.Text.StringBuilder();
+                bool singleClass = classGroups.Count == 1;
+                int splitClassCount = (classGroups.Count + 1) / 2;
+
+                for (int ci = 0; ci < classGroups.Count; ci++)
+                {
+                    var cg = classGroups[ci];
+                    if (singleClass)
+                    {
+                        // Для одного класса: уровни 1-10 → box1, 11-20 → box2
+                        sb1.AppendLine($"=== {cg.Class.Name} (уровень {cg.MaxLvl}) — уровни 1–10 ===");
+                        sb2.AppendLine($"=== {cg.Class.Name} (уровень {cg.MaxLvl}) — уровни 11–20 ===");
+                        foreach (var lev in cg.Levels)
+                        {
+                            if (string.IsNullOrEmpty(lev.Skills)) continue;
+                            var target = lev.Level1 <= 8 ? sb1 : sb2;
+                            target.AppendLine($"— Уровень {lev.Level1} —");
+                            target.AppendLine(lev.Skills);
+                            target.AppendLine();
+                        }
+                    }
+                    else
+                    {
+                        // Для нескольких классов: первая половина → box1, вторая → box2
+                        var targetSb = ci < splitClassCount ? sb1 : sb2;
+                        targetSb.AppendLine($"=== {cg.Class.Name} (уровень {cg.MaxLvl}) ===");
+                        foreach (var lev in cg.Levels)
+                        {
+                            if (!string.IsNullOrEmpty(lev.Skills))
+                            {
+                                targetSb.AppendLine($"— Уровень {lev.Level1} —");
+                                targetSb.AppendLine(lev.Skills);
+                                targetSb.AppendLine();
+                            }
+                        }
+                    }
+                }
+                FullClassTextBox.Text = sb1.ToString();
+                if (FullClassTextBox2 != null)
+                    FullClassTextBox2.Text = sb2.ToString();
+            }
+
+            // ── ClassSkillsShortTextBox ─────────────────────────────────────────────
+            var featureNames = new Dictionary<string, string>
+            {
+                ["СА"]  = "Скрытая атака",      ["ЯР"]  = "Ярость",
+                ["УЯР"] = "Урон ярости",         ["БИ"]  = "Боевые искусства",
+                ["ОЦ"]  = "Очки ци",             ["СБД"] = "Скорость без доспехов",
+                ["ЕЧ"]  = "Единицы чародейства", ["ВЗ"]  = "Воззвания",
+                ["КЗ"]  = "Заговоры",            ["ИЗ"]  = "Известные заклинания",
+                ["ЯЧ"]  = "Ячейки (чернокн.)",  ["УЯ"]  = "Уровень ячеек (чернокн.)",
+            };
+
+            var featDict = new Dictionary<string, string>();
+            int divineChannel = 0;
+
+            foreach (var cg in classGroups)
+            {
+                divineChannel = Math.Max(divineChannel, GetDivineChannelCount(cg.Class.Name, cg.MaxLvl));
+                foreach (var lev in cg.Levels)
+                {
+                    if (string.IsNullOrEmpty(lev.ClassTableFeatures)) continue;
+                    foreach (var kv in ParseCells(lev.ClassTableFeatures))
+                        featDict[kv.Key] = kv.Value; // перезаписываем — берём последний (максимальный) уровень
+                }
+            }
+
+            var shortSb = new System.Text.StringBuilder();
+            shortSb.AppendLine("— Особенности класса —");
+            foreach (var kv in featDict)
+            {
+                string label = featureNames.TryGetValue(kv.Key, out string fn) ? fn : kv.Key;
+                shortSb.AppendLine($"{label}: {kv.Value}");
+            }
+            if (divineChannel > 0)
+                shortSb.AppendLine($"Божественный канал: {divineChannel} исп.");
+
+            shortSb.AppendLine();
+            shortSb.AppendLine("— Классовые умения —");
+            var seen = new HashSet<string>();
+            foreach (var cg in classGroups)
+                foreach (var lev in cg.Levels)
+                    if (!string.IsNullOrEmpty(lev.Skills))
+                        foreach (var block in lev.Skills.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            var title = block.Trim().Split('\n')[0].Trim();
+                            if (!string.IsNullOrEmpty(title) && seen.Add(title))
+                                shortSb.AppendLine(title);
+                        }
+
+            // ── Ячейки заклинаний ────────────────────────────────────────────────────
+            string warlockSlots = null, warlockSlotLvl = null;
+
+            if (!isMulti)
+            {
+                // Fix 2: каждая ячейка показывает кружочки (○) по числу слотов
+                var cells = ParseCells(classGroups[0].Levels.Last().Cells ?? "");
+                for (int i = 1; i <= 9; i++)
+                {
+                    if (cells.TryGetValue(i.ToString(), out string v) &&
+                        int.TryParse(v, out int cnt) && cnt > 0)
+                        cellLabels[i - 1].Text = string.Join(" ", Enumerable.Repeat("○", cnt));
+                    else
+                        cellLabels[i - 1].Text = "";
+                }
+            }
+            else
+            {
+                int effectiveCasterLvl = 0;
+                foreach (var cg in classGroups)
+                {
+                    if (GetBaseClassName(cg.Class.Name) == "Колдун")
+                    {
+                        var wlCells = ParseCells(cg.Levels.Last().Cells ?? "");
+                        wlCells.TryGetValue("ЯЧ", out warlockSlots);
+                        wlCells.TryGetValue("УЯ", out warlockSlotLvl);
+                    }
+                    else
+                        effectiveCasterLvl += GetCasterLevel(cg.Class.Name, cg.MaxLvl);
+                }
+
+                if (effectiveCasterLvl > 0)
+                {
+                    var slots = _multiclassSlotTable[Math.Clamp(effectiveCasterLvl, 1, 20) - 1];
+                    for (int i = 0; i < 9; i++)
+                        cellLabels[i].Text = slots[i] > 0
+                            ? string.Join(" ", Enumerable.Repeat("○", slots[i]))
+                            : "";
+                }
+                else
+                    foreach (var lbl in cellLabels) lbl.Text = "";
+
+                if (warlockSlots != null)
+                    shortSb.AppendLine($"\nЯчейки чернокнижника: {warlockSlots} (ур. {warlockSlotLvl})");
+
+                // Снаряжение мультикласса (ограниченное для доп. классов)
+                var mcEquipSb = new System.Text.StringBuilder();
+                for (int i = 1; i < classGroups.Count; i++)
+                {
+                    string eq = GetMulticlassEquipment(classGroups[i].Class.Name);
+                    if (eq != "—")
+                        mcEquipSb.AppendLine($"{GetBaseClassName(classGroups[i].Class.Name)} (мультикласс): {eq}");
+                }
+                if (mcEquipSb.Length > 0)
+                    ToolsTextBox.Text += "\n=== Мультикласс ===\n" + mcEquipSb;
+            }
+
+            ClassSkillsShortTextBox.Text = shortSb.ToString();
+        }
+
+        // ─── Анимация навыков ──────────────────────────────────────────────────────
+
+        private Dictionary<string, CheckBox> BuildSkillMap() =>
+            new Dictionary<string, CheckBox>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["атлетика"]           = AthleticsCheckBox,
+                ["акробатика"]         = AcrobaticsCheckBox,
+                ["ловкость рук"]       = DexterityCheckBox,
+                ["скрытность"]         = StealthCheckBox,
+                ["анализ"]             = DessectionCheckBox,
+                ["история"]            = HistoryCheckBox,
+                ["магия"]              = MagicCheckBox,
+                ["природа"]            = NatureCheckBox,
+                ["религия"]            = ReligionCheckBox,
+                ["восприятие"]         = PerceptionCheckBox,
+                ["выживание"]          = SurvivalCheckBox,
+                ["медицина"]           = MedicineCheckBox,
+                ["проницательность"]   = DiscriminationCheckBox,
+                ["проницание"]         = DiscriminationCheckBox,
+                ["уход за животными"]  = AnimalCareCheckBox,
+                ["выступление"]        = PerformanceCheckBox,
+                ["запугивание"]        = IntimidationCheckBox,
+                ["обман"]              = DeceptionCheckBox,
+                ["убеждение"]          = PersuasionCheckBox,
+            };
+
+        private void StartSkillAnimation(List<string> skillNames, int requiredCount)
+        {
+            StopSkillAnimationOnly();
+            var map = BuildSkillMap();
+            Background back;
+            using (var db = new DDInformationContext())
+            {
+                var ch = db.Characters.FirstOrDefault(c => c.IdCharacter == DataIDCharacter);
+                back = db.Backgrounds.FirstOrDefault(b => b.IdBackground == ch.IdBackground);
+            }
+            var backPoss = back?.Possesion.Split(";");
+            _pendingCheckBoxes = skillNames
+                .Select(s => map.TryGetValue(s.Trim(), out var cb) ? cb : null)
+                .Where(cb => cb != null).ToList();
+            _pendingSkillCount = requiredCount;
+            foreach (var cb in _pendingCheckBoxes)
+                cb.CheckedChanged += CheckSkillProgress;
+            _animTimer.Start();
+        }
+
+        private void StopSkillAnimationOnly()
+        {
+            _animTimer.Stop();
+            foreach (var cb in _pendingCheckBoxes)
+            {
+                cb.BackColor = SystemColors.Control;
+                cb.CheckedChanged -= CheckSkillProgress;
+            }
+            _pendingCheckBoxes.Clear();
+        }
+
+        private void StopSkillAnimation()
+        {
+            StopSkillAnimationOnly();
+            using (var db = new DDInformationContext())
+            {
+                var ch = db.Characters.Find(DataIDCharacter);
+                if (ch != null) { ch.SkillsPending = false; db.SaveChanges(); }
+            }
+        }
+
+        private void AnimTimer_Tick(object sender, EventArgs e)
+        {
+            _animState = !_animState;
+            foreach (var cb in _pendingCheckBoxes)
+                cb.BackColor = (!cb.Checked && _animState) ? Color.LightYellow : SystemColors.Control;
+        }
+
+        private void CheckSkillProgress(object sender, EventArgs e)
+        {
+            if (!_animTimer.Enabled) return;
+            if (_pendingCheckBoxes.Count(cb => cb.Checked) >= _pendingSkillCount)
+                StopSkillAnimation();
+        }
+
+        // ──────────────────────────────────────────────────────────────────────────
 
         public void SetClassLevel(Character character, int classId, int newMaxLevel, DDInformationContext db)
         {

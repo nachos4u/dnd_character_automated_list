@@ -29,6 +29,13 @@
         private void InitializeComponent()
         {
             pictureBox1 = new PictureBox();
+            SpesiesButton = new Button();
+            BackgroundButton = new Button();
+            ClassesButton = new Button();
+            TraitsButton = new Button();
+            SpellsButton = new Button();
+            InvetoryButton = new Button();
+            label1 = new Label();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
             SuspendLayout();
             // 
@@ -42,23 +49,105 @@
             pictureBox1.TabStop = false;
             pictureBox1.Click += pictureBox1_Click;
             // 
+            // SpesiesButton
+            // 
+            SpesiesButton.Location = new Point(13, 113);
+            SpesiesButton.Name = "SpesiesButton";
+            SpesiesButton.Size = new Size(199, 70);
+            SpesiesButton.TabIndex = 1;
+            SpesiesButton.Text = "Обновить расы";
+            SpesiesButton.UseVisualStyleBackColor = true;
+            SpesiesButton.Click += this.SpesiesButton_Click;
+            // 
+            // BackgroundButton
+            // 
+            BackgroundButton.Location = new Point(218, 113);
+            BackgroundButton.Name = "BackgroundButton";
+            BackgroundButton.Size = new Size(199, 70);
+            BackgroundButton.TabIndex = 2;
+            BackgroundButton.Text = "Обновить предистории";
+            BackgroundButton.UseVisualStyleBackColor = true;
+            BackgroundButton.Click += BackgroundButton_Click;
+            // 
+            // ClassesButton
+            // 
+            ClassesButton.Location = new Point(423, 113);
+            ClassesButton.Name = "ClassesButton";
+            ClassesButton.Size = new Size(199, 70);
+            ClassesButton.TabIndex = 3;
+            ClassesButton.Text = "Обновить Классы";
+            ClassesButton.UseVisualStyleBackColor = true;
+            ClassesButton.Click += ClassesButton_Click;
+            // 
+            // TraitsButton
+            // 
+            TraitsButton.Location = new Point(13, 189);
+            TraitsButton.Name = "TraitsButton";
+            TraitsButton.Size = new Size(199, 70);
+            TraitsButton.TabIndex = 4;
+            TraitsButton.Text = "Обновить черты";
+            TraitsButton.UseVisualStyleBackColor = true;
+            // 
+            // SpellsButton
+            // 
+            SpellsButton.Location = new Point(218, 189);
+            SpellsButton.Name = "SpellsButton";
+            SpellsButton.Size = new Size(199, 70);
+            SpellsButton.TabIndex = 5;
+            SpellsButton.Text = "Обновить заклинания";
+            SpellsButton.UseVisualStyleBackColor = true;
+            SpellsButton.Click += SpellsButton_Click;
+            // 
+            // InvetoryButton
+            // 
+            InvetoryButton.Location = new Point(423, 189);
+            InvetoryButton.Name = "InvetoryButton";
+            InvetoryButton.Size = new Size(199, 70);
+            InvetoryButton.TabIndex = 6;
+            InvetoryButton.Text = "Обновить сокровища";
+            InvetoryButton.UseVisualStyleBackColor = true;
+            // 
+            // label1
+            // 
+            label1.AutoSize = true;
+            label1.Location = new Point(62, 279);
+            label1.Name = "label1";
+            label1.Size = new Size(499, 20);
+            label1.TabIndex = 7;
+            label1.Text = "⚠️ВНИМАНИЕ! Обновление с ttg.club занимает от 5 минут до 3часов!";
+            // 
             // Form2
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
+            Controls.Add(label1);
+            Controls.Add(InvetoryButton);
+            Controls.Add(SpellsButton);
+            Controls.Add(TraitsButton);
+            Controls.Add(ClassesButton);
+            Controls.Add(BackgroundButton);
+            Controls.Add(SpesiesButton);
             Controls.Add(pictureBox1);
-            Name = "DataBase";
+            Name = "Form2";
             Text = "DataBase";
+            FormClosing += Form2_FormClosing;
+            FormClosed += Form2_FormClosed;
             ((System.ComponentModel.ISupportInitialize)pictureBox1).EndInit();
             ResumeLayout(false);
-            FormClosed += Form2_FormClosed;
-            FormClosing += Form2_FormClosing;
+            PerformLayout();
         }
 
 
         #endregion
 
         private PictureBox pictureBox1;
+        private Button SpesiesButton;
+        private Button BackgroundButton;
+        private Button ClassesButton;
+        private Button TraitsButton;
+        private Button SpellsButton;
+        private Button InvetoryButton;
+        private Label label1;
     }
 }

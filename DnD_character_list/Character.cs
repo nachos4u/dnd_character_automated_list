@@ -62,4 +62,10 @@ public partial class Character
     public virtual ICollection<Trait> IdTraits { get; set; } = new List<Trait>();
 
     public virtual ICollection<Level> Levels { get; set; } = new List<Level>();
+
+    // Отслеживание выбора навыков класса
+    public int? PrimaryClassId { get; set; }
+    public bool SkillsPending { get; set; }
+    public string? PendingSkillChoices { get; set; }
+    public int? PendingSkillCount { get; set; }
 }

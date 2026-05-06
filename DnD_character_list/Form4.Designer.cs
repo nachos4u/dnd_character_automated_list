@@ -1540,16 +1540,7 @@
             mmUpDown.Name = "mmUpDown";
             mmUpDown.Size = new Size(52, 27);
             mmUpDown.TabIndex = 195;
-            // 
-            // button1
-            // 
-            button1.Location = new Point(332, 85);
-            button1.Name = "button1";
-            button1.Size = new Size(94, 29);
-            button1.TabIndex = 196;
-            button1.Text = "button1";
-            button1.UseVisualStyleBackColor = true;
-            button1.Click += button1_Click;
+            
             // 
             // comboSpecies
             // 

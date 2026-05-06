@@ -198,7 +198,7 @@ namespace DnD_character_list
                 var doc = JsonSerializer.Deserialize<JsonElement>(json);
 
                 if (doc.TryGetProperty("description", out var descEl))
-                    return descEl.GetString() ?? "";
+                    return StripHtml(descEl.GetString() ?? "");
             }
             catch { }
 
@@ -640,5 +640,9 @@ namespace DnD_character_list
             db.SaveChanges();
             return hd.IdHitDice;
         }
+
+        // Fix 7: убираем HTML-разметку, оставляем текст
+        private static string StripHtml(string text) =>
+            System.Text.RegularExpressions.Regex.Replace(text ?? "", "<[^>]+>", "");
     }
 }

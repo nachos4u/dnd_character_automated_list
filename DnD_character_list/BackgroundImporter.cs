@@ -187,7 +187,7 @@ namespace DnD_character_list
                             skill += skillItem.GetString()?.ToLower() + ";";
                         break;
                     case "toolOwnership":
-                        tools = prop.Value.GetString() ?? "";
+                        tools = StripHtml(prop.Value.GetString() ?? "");
                         break;
                     case "equipments" when prop.Value.ValueKind == JsonValueKind.Array:
                         foreach (var item in prop.Value.EnumerateArray())
@@ -198,7 +198,7 @@ namespace DnD_character_list
                             gm = gold;
                         break;
                     case "description":
-                        desc = prop.Value.GetString() ?? "";
+                        desc = StripHtml(prop.Value.GetString() ?? "");
                         break;
                 }
             }
@@ -216,6 +216,10 @@ namespace DnD_character_list
                 ToolOwnership = tools
             };
         }
+
+        // Fix 7: убираем HTML-разметку, оставляем текст
+        private static string StripHtml(string text) =>
+            System.Text.RegularExpressions.Regex.Replace(text ?? "", "<[^>]+>", "");
 
         private async Task SaveBackgroundsToDatabase(ConcurrentBag<Background> backgroundToAdd)
         {

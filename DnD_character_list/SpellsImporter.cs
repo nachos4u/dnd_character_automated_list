@@ -266,10 +266,10 @@ namespace DnD_character_list
                         peculiarities = ParseClasses(raceDocument.Value);
                         break;
                     case "description":
-                        desc = raceDocument.Value.GetString() ?? "";
+                        desc = StripHtml(raceDocument.Value.GetString() ?? "");
                         break;
                     case "upper":
-                        upper = raceDocument.Value.ToString();
+                        upper = StripHtml(raceDocument.Value.ToString());
                         break;
                 }
             }
@@ -327,6 +327,10 @@ namespace DnD_character_list
             }
             return classes.ToString();
         }
+
+        // Fix 7: убираем HTML-разметку, оставляем текст
+        private static string StripHtml(string text) =>
+            System.Text.RegularExpressions.Regex.Replace(text ?? "", "<[^>]+>", "");
 
         private async Task SaveSpellsToDatabase(ConcurrentBag<Spell> spellToAdd)
         {

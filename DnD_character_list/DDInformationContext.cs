@@ -85,6 +85,10 @@ public partial class DDInformationContext : DbContext
             entity.Property(e => e.Speed).HasColumnName("speed");
             entity.Property(e => e.TimeHitpoints).HasColumnName("time_hitpoints");
             entity.Property(e => e.Worldview).HasMaxLength(2).HasColumnName("worldview");
+            entity.Property(e => e.PrimaryClassId).HasColumnName("primary_class_id");
+            entity.Property(e => e.SkillsPending).HasColumnName("skills_pending").HasDefaultValue(false);
+            entity.Property(e => e.PendingSkillChoices).HasColumnName("pending_skill_choices");
+            entity.Property(e => e.PendingSkillCount).HasColumnName("pending_skill_count");
 
             entity.HasOne(d => d.IdBackgroundNavigation).WithMany(p => p.Characters)
                 .HasForeignKey(d => d.IdBackground)

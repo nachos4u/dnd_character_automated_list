@@ -191,7 +191,7 @@ namespace DnD_character_list
                         source = prop.Value.GetProperty("shortName").GetString() ?? "";
                         break;
                     case "description":
-                        desc = prop.Value.GetString() ?? "";
+                        desc = StripHtml(prop.Value.GetString() ?? "");
                         break;
                     case "abilities" when prop.Value.ValueKind == JsonValueKind.Array:
                         char_tics = ParseAbilities(prop.Value);
@@ -251,7 +251,7 @@ namespace DnD_character_list
                             source = prop.Value.GetProperty("shortName").GetString() ?? "";
                             break;
                         case "description":
-                            desc = prop.Value.GetString() ?? "";
+                            desc = StripHtml(prop.Value.GetString() ?? "");
                             break;
                         case "abilities" when prop.Value.ValueKind == JsonValueKind.Array:
                             char_tics = ParseAbilities(prop.Value);
@@ -363,11 +363,15 @@ namespace DnD_character_list
                     if (prop.Name == "name")
                         result += prop.Value.GetString() + ": ";
                     else if (prop.Name == "description")
-                        result += prop.Value.GetString() + "\n\n";
+                        result += StripHtml(prop.Value.GetString() ?? "") + "\n\n";
                 }
             }
             return result;
         }
+
+        // Fix 7: убираем HTML-разметку, оставляем текст
+        private static string StripHtml(string text) =>
+            System.Text.RegularExpressions.Regex.Replace(text ?? "", "<[^>]+>", "");
 
         private async Task SaveSpeciesToDatabase(ConcurrentBag<Species> speciesToAdd)
         {
