@@ -700,6 +700,7 @@ namespace DnD_character_list
 
                             }
                         }
+
                     }
                 }
             }
