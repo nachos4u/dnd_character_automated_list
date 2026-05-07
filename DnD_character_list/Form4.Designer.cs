@@ -177,7 +177,6 @@
             gmUpDown = new NumericUpDown();
             smUpDown = new NumericUpDown();
             mmUpDown = new NumericUpDown();
-            button1 = new Button();
             comboSpecies = new ComboBox();
             comboBackground = new ComboBox();
             SpeedSkillTextBox = new TextBox();
@@ -188,6 +187,12 @@
             BackgroundDescTextBox = new TextBox();
             ToolsTextBox = new TextBox();
             ClassNameTextBox = new TextBox();
+            StrSpas = new Label();
+            AgiSpas = new Label();
+            StaSpas = new Label();
+            IntSpas = new Label();
+            WisSpas = new Label();
+            ChaSpas = new Label();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox2).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox3).BeginInit();
@@ -1540,7 +1545,6 @@
             mmUpDown.Name = "mmUpDown";
             mmUpDown.Size = new Size(52, 27);
             mmUpDown.TabIndex = 195;
-            
             // 
             // comboSpecies
             // 
@@ -1627,12 +1631,66 @@
             ClassNameTextBox.Size = new Size(166, 78);
             ClassNameTextBox.TabIndex = 206;
             // 
+            // StrSpas
+            // 
+            StrSpas.AutoSize = true;
+            StrSpas.Location = new Point(402, 1131);
+            StrSpas.Name = "StrSpas";
+            StrSpas.Size = new Size(0, 20);
+            StrSpas.TabIndex = 207;
+            // 
+            // AgiSpas
+            // 
+            AgiSpas.AutoSize = true;
+            AgiSpas.Location = new Point(402, 1164);
+            AgiSpas.Name = "AgiSpas";
+            AgiSpas.Size = new Size(0, 20);
+            AgiSpas.TabIndex = 208;
+            // 
+            // StaSpas
+            // 
+            StaSpas.AutoSize = true;
+            StaSpas.Location = new Point(402, 1194);
+            StaSpas.Name = "StaSpas";
+            StaSpas.Size = new Size(0, 20);
+            StaSpas.TabIndex = 209;
+            // 
+            // IntSpas
+            // 
+            IntSpas.AutoSize = true;
+            IntSpas.Location = new Point(402, 1224);
+            IntSpas.Name = "IntSpas";
+            IntSpas.Size = new Size(0, 20);
+            IntSpas.TabIndex = 210;
+            // 
+            // WisSpas
+            // 
+            WisSpas.AutoSize = true;
+            WisSpas.Location = new Point(402, 1251);
+            WisSpas.Name = "WisSpas";
+            WisSpas.Size = new Size(0, 20);
+            WisSpas.TabIndex = 211;
+            // 
+            // ChaSpas
+            // 
+            ChaSpas.AutoSize = true;
+            ChaSpas.Location = new Point(402, 1284);
+            ChaSpas.Name = "ChaSpas";
+            ChaSpas.Size = new Size(0, 20);
+            ChaSpas.TabIndex = 212;
+            // 
             // Form4
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             AutoScroll = true;
             ClientSize = new Size(1334, 1175);
+            Controls.Add(ChaSpas);
+            Controls.Add(WisSpas);
+            Controls.Add(IntSpas);
+            Controls.Add(StaSpas);
+            Controls.Add(AgiSpas);
+            Controls.Add(StrSpas);
             Controls.Add(ClassNameTextBox);
             Controls.Add(ToolsTextBox);
             Controls.Add(BackgroundDescTextBox);
@@ -1645,7 +1703,6 @@
             Controls.Add(SpeedSkillTextBox);
             Controls.Add(comboBackground);
             Controls.Add(comboSpecies);
-            Controls.Add(button1);
             Controls.Add(mmUpDown);
             Controls.Add(smUpDown);
             Controls.Add(gmUpDown);
@@ -1979,7 +2036,6 @@
         private NumericUpDown gmUpDown;
         private NumericUpDown smUpDown;
         private NumericUpDown mmUpDown;
-        private Button button1;
         private ComboBox comboSpecies;
         private ComboBox comboBackground;
         private TextBox SpeedSkillTextBox;
@@ -1990,5 +2046,11 @@
         private TextBox BackgroundDescTextBox;
         private TextBox ToolsTextBox;
         private TextBox ClassNameTextBox;
+        private Label StrSpas;
+        private Label AgiSpas;
+        private Label StaSpas;
+        private Label IntSpas;
+        private Label WisSpas;
+        private Label ChaSpas;
     }
 }
