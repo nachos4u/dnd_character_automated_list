@@ -67,5 +67,17 @@ namespace DnD_character_list
             var importer = new SpellsImporter();
             await importer.ImportSpellAsync();
         }
+
+        private async void button1_Click(object sender, EventArgs e)
+        {
+            var importerSpells = new SpellsImporter();
+            var importerClasses = new ClassesImporter();
+            var importerBackground = new BackgroundImporter();
+            var importerSpecies = new SpeciesImporter();
+            await importerSpells.ImportSpellAsync();
+            await importerClasses.ImportClassAsync();
+            await importerBackground.ImportBackgroundAsync();
+            await importerSpecies.ImportRacesAsync();
+        }
     }
 }

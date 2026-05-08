@@ -126,8 +126,6 @@
             NotesLable = new Label();
             NotesTextBox = new TextBox();
             pictureBox5 = new PictureBox();
-            SaveButton = new Button();
-            ExportButton = new Button();
             DataBaseButton = new Button();
             NewSpellButton = new Button();
             SpellCharaLable = new Label();
@@ -1112,24 +1110,6 @@
             pictureBox5.TabIndex = 144;
             pictureBox5.TabStop = false;
             // 
-            // SaveButton
-            // 
-            SaveButton.Location = new Point(526, 12);
-            SaveButton.Name = "SaveButton";
-            SaveButton.Size = new Size(181, 81);
-            SaveButton.TabIndex = 145;
-            SaveButton.Text = "Сохранить";
-            SaveButton.UseVisualStyleBackColor = true;
-            // 
-            // ExportButton
-            // 
-            ExportButton.Location = new Point(713, 12);
-            ExportButton.Name = "ExportButton";
-            ExportButton.Size = new Size(181, 81);
-            ExportButton.TabIndex = 146;
-            ExportButton.Text = "Экспорт";
-            ExportButton.UseVisualStyleBackColor = true;
-            // 
             // DataBaseButton
             // 
             DataBaseButton.Location = new Point(1104, 12);
@@ -1752,8 +1732,6 @@
             Controls.Add(SpellCharaLable);
             Controls.Add(NewSpellButton);
             Controls.Add(DataBaseButton);
-            Controls.Add(ExportButton);
-            Controls.Add(SaveButton);
             Controls.Add(pictureBox5);
             Controls.Add(pictureBox4);
             Controls.Add(FullClassTextBox);
@@ -1985,8 +1963,6 @@
         private Label NotesLable;
         private TextBox NotesTextBox;
         private PictureBox pictureBox5;
-        private Button SaveButton;
-        private Button ExportButton;
         private Button DataBaseButton;
         private Button NewSpellButton;
         private Label SpellCharaLable;

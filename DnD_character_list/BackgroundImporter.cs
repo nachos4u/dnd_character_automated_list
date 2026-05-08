@@ -35,7 +35,6 @@ namespace DnD_character_list
                 await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
                 var document = JsonSerializer.Deserialize<JsonElement>(jsonText);
-
                 if (document.ValueKind != JsonValueKind.Array) return;
 
                 var urls = new List<string>();
@@ -82,9 +81,9 @@ namespace DnD_character_list
 
                         var pageLocal = await browserLocal.NewPageAsync();
 
-                        HashSet<string> savedNames;
-                        using (var dbCheck = new DDInformationContext())
-                            savedNames = dbCheck.Backgrounds.Select(b => b.Name).ToHashSet();
+                        // Tracks names processed in this run only — no DB pre-load,
+                        // so existing records are always updated.
+                        var savedNames = new HashSet<string>();
 
                         foreach (var url in urlsChunk)
                         {
@@ -110,20 +109,35 @@ namespace DnD_character_list
                                     if (bg != null)
                                     {
                                         backgroundToAdd.Add(bg);
-                                        if (!savedNames.Contains(bg.Name))
+
+                                        // Skip if already processed in this run (duplicate URL)
+                                        if (savedNames.Contains(bg.Name)) continue;
+                                        savedNames.Add(bg.Name);
+
+                                        try
                                         {
-                                            savedNames.Add(bg.Name);
-                                            try
+                                            using var dbSave = new DDInformationContext();
+                                            var existing = dbSave.Backgrounds.FirstOrDefault(b => b.Name == bg.Name);
+                                            if (existing != null)
                                             {
-                                                using var dbSave = new DDInformationContext();
+                                                existing.Description   = bg.Description;
+                                                existing.Source        = bg.Source;
+                                                existing.Possesion     = bg.Possesion;
+                                                existing.Gm            = bg.Gm;
+                                                existing.Invetary      = bg.Invetary;
+                                                existing.ToolOwnership = bg.ToolOwnership;
+                                                Console.WriteLine($"[ОБНОВЛЕНО] Предыстория: {bg.Name}");
+                                            }
+                                            else
+                                            {
                                                 dbSave.Backgrounds.Add(bg);
-                                                await dbSave.SaveChangesAsync();
-                                                Console.WriteLine($"[УСПЕХ] Добавлен фон: {bg.Name}");
+                                                Console.WriteLine($"[ДОБАВЛЕНО] Предыстория: {bg.Name}");
                                             }
-                                            catch (Exception saveEx)
-                                            {
-                                                Console.WriteLine($"[ОШИБКА сохранения] {bg.Name}: {saveEx.InnerException?.Message ?? saveEx.Message}");
-                                            }
+                                            await dbSave.SaveChangesAsync();
+                                        }
+                                        catch (Exception saveEx)
+                                        {
+                                            Console.WriteLine($"[ОШИБКА сохранения] {bg.Name}: {saveEx.InnerException?.Message ?? saveEx.Message}");
                                         }
                                     }
                                 }
@@ -217,27 +231,42 @@ namespace DnD_character_list
             };
         }
 
-        // Fix 7: убираем HTML-разметку, оставляем текст
         private static string StripHtml(string text) =>
             System.Text.RegularExpressions.Regex.Replace(text ?? "", "<[^>]+>", "");
 
         private async Task SaveBackgroundsToDatabase(ConcurrentBag<Background> backgroundToAdd)
         {
             using var db = new DDInformationContext();
-            var existingNames = db.Backgrounds.Select(b => b.Name).ToHashSet();
 
-            var newBackgrounds = backgroundToAdd
-                .Where(b => !existingNames.Contains(b.Name))
+            // Deduplicate by name within the collected bag
+            var unique = backgroundToAdd
                 .GroupBy(b => b.Name)
                 .Select(g => g.First())
                 .ToList();
 
-            if (newBackgrounds.Any())
+            int added = 0, updated = 0;
+            foreach (var bg in unique)
             {
-                await db.Backgrounds.AddRangeAsync(newBackgrounds);
-                await db.SaveChangesAsync();
-                Console.WriteLine($"Добавлено {newBackgrounds.Count} новых предысторий");
+                var existing = db.Backgrounds.FirstOrDefault(b => b.Name == bg.Name);
+                if (existing != null)
+                {
+                    existing.Description   = bg.Description;
+                    existing.Source        = bg.Source;
+                    existing.Possesion     = bg.Possesion;
+                    existing.Gm            = bg.Gm;
+                    existing.Invetary      = bg.Invetary;
+                    existing.ToolOwnership = bg.ToolOwnership;
+                    updated++;
+                }
+                else
+                {
+                    db.Backgrounds.Add(bg);
+                    added++;
+                }
             }
+
+            await db.SaveChangesAsync();
+            Console.WriteLine($"Итог: добавлено {added}, обновлено {updated} предысторий");
         }
     }
 }

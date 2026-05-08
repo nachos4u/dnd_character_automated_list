@@ -1,12 +1,6 @@
-﻿using DnD_character_list;
-using Microsoft.EntityFrameworkCore;
+using DnD_character_list;
 using Microsoft.Playwright;
-using Microsoft.VisualBasic.Devices;
-using Microsoft.VisualStudio.TestPlatform.CoreUtilities.Extensions;
-using Newtonsoft.Json.Linq;
-using NUnit.Framework;
 using System.Collections.Concurrent;
-using System.Net;
 using System.Text;
 using System.Text.Json;
 
@@ -19,46 +13,35 @@ namespace DnD_character_list
         public async Task ImportSpellAsync()
         {
             var proxies = new List<string>
-    {
+            {
                 "188.130.184.6:3000@YELcgn68:PYFuji2l"
-
             };
             var spellToAdd = new ConcurrentBag<Spell>();
             var browserTasks = new List<Task>();
-            int count = 0;
 
             try
             {
                 using var playwright = await Playwright.CreateAsync();
                 await using var browser = await playwright.Chromium.LaunchAsync(new()
                 {
-                    Headless = false,  // Changed to true for production
+                    Headless = false,
                     Timeout = 60000
                 });
 
                 var page = await browser.NewPageAsync();
                 await page.GotoAsync("https://5e14.ttg.club/spells");
 
-                // Get all spell URLs
                 var urls = await GetAllSpellUrls(page);
 
-                // Process spells in batches
                 await ProcessSpellsInBatches(urls, proxies, spellToAdd, browserTasks);
 
-
-                // Save to database
                 await SaveSpellsToDatabase(spellToAdd);
-
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Ошибка: {ex.Message}");
-
                 if (ex.InnerException != null)
-                {
                     Console.WriteLine($"Inner: {ex.InnerException.Message}");
-                }
-
                 Console.WriteLine($"Stack Trace: {ex.StackTrace}");
             }
         }
@@ -79,11 +62,9 @@ namespace DnD_character_list
                 var document = JsonSerializer.Deserialize<JsonElement>(jsonText);
 
                 if (document.ValueKind == JsonValueKind.Array)
-                {
                     ExtractUrlsFromDocument(document, urls);
-                }
 
-                if (i < scrollAttempts) // Don't scroll after last iteration
+                if (i < scrollAttempts)
                 {
                     await page.Mouse.ClickAsync(100, 100);
                     page.Mouse.WheelAsync(0, 10000);
@@ -126,15 +107,11 @@ namespace DnD_character_list
 
         private async Task ProcessSpellsInBatches(List<string> urls, List<string> proxies, ConcurrentBag<Spell> spellToAdd, List<Task> browserTasks)
         {
-
-
             var chunks = urls
                 .Select((url, i) => new { url, i })
                 .GroupBy(x => x.i % proxies.Count)
                 .Select(g => g.Select(x => x.url).ToList())
                 .ToList();
-
-
 
             for (int i = 0; i < chunks.Count; i++)
             {
@@ -145,7 +122,7 @@ namespace DnD_character_list
 
                 var proxy = new Proxy
                 {
-                    Server = $"https://{ipPort}", // или socks5://
+                    Server = $"https://{ipPort}",
                     Username = creds[0],
                     Password = creds[1]
                 };
@@ -155,21 +132,20 @@ namespace DnD_character_list
                     using var playwrightLocal = await Playwright.CreateAsync();
                     await using var browserLocal = await playwrightLocal.Chromium.LaunchAsync(new()
                     {
-                        Headless = false,
-                        Proxy = proxy
+                        Headless = false
                     });
 
                     var pageLocal = await browserLocal.NewPageAsync();
 
-                    HashSet<string> savedNames;
-                    using (var dbCheck = new DDInformationContext())
-                        savedNames = dbCheck.Spells.Select(s => s.Name).ToHashSet();
+                    // Tracks names processed in this run only — no DB pre-load,
+                    // so existing records are always updated.
+                    var savedNames = new HashSet<string>();
 
                     foreach (var url in urlsChunk)
                     {
                         try
                         {
-                            await Task.Delay(Random.Shared.Next(13000, 15000)); // Reduced delay
+                            await Task.Delay(Random.Shared.Next(13000, 15000));
 
                             var fullUrl = "https://5e14.ttg.club" + url;
                             await pageLocal.GotoAsync(fullUrl);
@@ -189,20 +165,40 @@ namespace DnD_character_list
                                 if (spell != null)
                                 {
                                     spellToAdd.Add(spell);
-                                    if (!savedNames.Contains(spell.Name))
+
+                                    // Skip if already processed in this run (duplicate URL)
+                                    if (savedNames.Contains(spell.Name)) continue;
+                                    savedNames.Add(spell.Name);
+
+                                    try
                                     {
-                                        savedNames.Add(spell.Name);
-                                        try
+                                        using var dbSave = new DDInformationContext();
+                                        var existing = dbSave.Spells.FirstOrDefault(s => s.Name == spell.Name);
+                                        if (existing != null)
                                         {
-                                            using var dbSave = new DDInformationContext();
+                                            existing.Description       = spell.Description;
+                                            existing.CellLevel         = spell.CellLevel;
+                                            existing.Source            = spell.Source;
+                                            existing.Range             = spell.Range;
+                                            existing.School            = spell.School;
+                                            existing.Components        = spell.Components;
+                                            existing.Duration          = spell.Duration;
+                                            existing.Time              = spell.Time;
+                                            existing.Peculiarities     = spell.Peculiarities;
+                                            existing.MaterialComponent = spell.MaterialComponent;
+                                            existing.Upper             = spell.Upper;
+                                            Console.WriteLine($"[ОБНОВЛЕНО] Заклинание: {spell.Name}");
+                                        }
+                                        else
+                                        {
                                             dbSave.Spells.Add(spell);
-                                            await dbSave.SaveChangesAsync();
-                                            Console.WriteLine($"[УСПЕХ] Добавлено заклинание: {spell.Name}");
+                                            Console.WriteLine($"[ДОБАВЛЕНО] Заклинание: {spell.Name}");
                                         }
-                                        catch (Exception saveEx)
-                                        {
-                                            Console.WriteLine($"[ОШИБКА сохранения] {spell.Name}: {saveEx.InnerException?.Message ?? saveEx.Message}");
-                                        }
+                                        await dbSave.SaveChangesAsync();
+                                    }
+                                    catch (Exception saveEx)
+                                    {
+                                        Console.WriteLine($"[ОШИБКА сохранения] {spell.Name}: {saveEx.InnerException?.Message ?? saveEx.Message}");
                                     }
                                 }
                             }
@@ -274,7 +270,6 @@ namespace DnD_character_list
                 }
             }
 
-
             if (!string.IsNullOrEmpty(name))
             {
                 return new Spell
@@ -320,43 +315,53 @@ namespace DnD_character_list
                 foreach (var classProperty in classItem.EnumerateObject())
                 {
                     if (classProperty.Name == "name")
-                    {
                         classes.Append(classProperty.Value.ToString());
-                    }
                 }
             }
             return classes.ToString();
         }
 
-        // Fix 7: убираем HTML-разметку, оставляем текст
         private static string StripHtml(string text) =>
             System.Text.RegularExpressions.Regex.Replace(text ?? "", "<[^>]+>", "");
 
         private async Task SaveSpellsToDatabase(ConcurrentBag<Spell> spellToAdd)
         {
             using var db = new DDInformationContext();
+
+            // Deduplicate by name within the collected bag
+            var unique = spellToAdd
+                .GroupBy(sp => sp.Name)
+                .Select(g => g.First())
+                .ToList();
+
+            int added = 0, updated = 0;
+            foreach (var spell in unique)
             {
-                var newSpells = new List<Spell>();
-                lock (spellToAdd)
+                var existing = db.Spells.FirstOrDefault(s => s.Name == spell.Name);
+                if (existing != null)
                 {
-                    var existingSpellNames = db.Spells
-                        .Select(s => s.Name)
-                        .ToHashSet();
-
-                    newSpells = spellToAdd
-                        .Where(sp => !existingSpellNames.Contains(sp.Name))
-                        .GroupBy(sp => sp.Name)
-                        .Select(g => g.First())
-                        .ToList();
+                    existing.Description       = spell.Description;
+                    existing.CellLevel         = spell.CellLevel;
+                    existing.Source            = spell.Source;
+                    existing.Range             = spell.Range;
+                    existing.School            = spell.School;
+                    existing.Components        = spell.Components;
+                    existing.Duration          = spell.Duration;
+                    existing.Time              = spell.Time;
+                    existing.Peculiarities     = spell.Peculiarities;
+                    existing.MaterialComponent = spell.MaterialComponent;
+                    existing.Upper             = spell.Upper;
+                    updated++;
                 }
-
-                if (newSpells.Any())
+                else
                 {
-                    await db.Spells.AddRangeAsync(newSpells);
-                    await db.SaveChangesAsync();
-                    Console.WriteLine($"Добавлено {newSpells.Count} новых заклинаний");
+                    db.Spells.Add(spell);
+                    added++;
                 }
             }
+
+            await db.SaveChangesAsync();
+            Console.WriteLine($"Итог: добавлено {added}, обновлено {updated} заклинаний");
         }
     }
 }

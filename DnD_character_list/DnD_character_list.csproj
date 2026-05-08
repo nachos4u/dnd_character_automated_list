@@ -30,6 +30,32 @@
     </Compile>
   </ItemGroup>
 
+  <!-- Partial-class files: принудительно указываем SubType=Code, чтобы VS 2022
+       отображала их как обычные файлы кода, а не как Form-файлы. -->
+  <ItemGroup>
+    <Compile Update="Form4.Load.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Form4.Save.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Form4.Calculations.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Form4.ClassInfo.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Form4.SkillAnimation.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Form4.Pdf.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="CharacterJsonSerializer.cs">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Update="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

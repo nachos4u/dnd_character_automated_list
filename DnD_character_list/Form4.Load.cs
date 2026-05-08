@@ -371,60 +371,64 @@ namespace DnD_character_list
                     var oldBg = oldStats.getoldbackground(DataIDCharacter);
                     int prev_gm = oldBg?.Gm ?? 0;
 
-                    // Откатываем навыки старой предыстории
+                    // Откатываем навыки старой предыстории.
+                    // Если навык в состоянии Indeterminate (компетентность) — не трогаем его;
+                    // компетентность пришла из другого источника (класс, ручной выбор).
                     if (oldBg?.Possesion != null)
                     {
                         foreach (string item in oldBg.Possesion.Split(';'))
                         {
                             switch (item)
                             {
-                                case "атлетика":          AthleticsCheckBox.Checked       = false; break;
-                                case "акробатика":        AcrobaticsCheckBox.Checked      = false; break;
-                                case "ловкость рук":      DexterityCheckBox.Checked       = false; break;
-                                case "скрытность":        StealthCheckBox.Checked         = false; break;
-                                case "анализ":            DessectionCheckBox.Checked      = false; break;
-                                case "история":           HistoryCheckBox.Checked         = false; break;
-                                case "магия":             MagicCheckBox.Checked           = false; break;
-                                case "природа":           NatureCheckBox.Checked          = false; break;
-                                case "религия":           ReligionCheckBox.Checked        = false; break;
-                                case "восприятие":        PerceptionCheckBox.Checked      = false; break;
-                                case "выживание":         SurvivalCheckBox.Checked        = false; break;
-                                case "медицина":          MedicineCheckBox.Checked        = false; break;
-                                case "проницательность":  DiscriminationCheckBox.Checked  = false; break;
-                                case "уход за животными": AnimalCareCheckBox.Checked      = false; break;
-                                case "выступление":       PerformanceCheckBox.Checked     = false; break;
-                                case "запугивание":       IntimidationCheckBox.Checked    = false; break;
-                                case "обман":             DeceptionCheckBox.Checked       = false; break;
-                                case "убеждение":         PersuasionCheckBox.Checked      = false; break;
+                                case "атлетика":          if (AthleticsCheckBox.CheckState      == CheckState.Checked) AthleticsCheckBox.Checked      = false; break;
+                                case "акробатика":        if (AcrobaticsCheckBox.CheckState     == CheckState.Checked) AcrobaticsCheckBox.Checked      = false; break;
+                                case "ловкость рук":      if (DexterityCheckBox.CheckState      == CheckState.Checked) DexterityCheckBox.Checked       = false; break;
+                                case "скрытность":        if (StealthCheckBox.CheckState        == CheckState.Checked) StealthCheckBox.Checked         = false; break;
+                                case "анализ":            if (DessectionCheckBox.CheckState     == CheckState.Checked) DessectionCheckBox.Checked      = false; break;
+                                case "история":           if (HistoryCheckBox.CheckState        == CheckState.Checked) HistoryCheckBox.Checked         = false; break;
+                                case "магия":             if (MagicCheckBox.CheckState          == CheckState.Checked) MagicCheckBox.Checked           = false; break;
+                                case "природа":           if (NatureCheckBox.CheckState         == CheckState.Checked) NatureCheckBox.Checked          = false; break;
+                                case "религия":           if (ReligionCheckBox.CheckState       == CheckState.Checked) ReligionCheckBox.Checked        = false; break;
+                                case "восприятие":        if (PerceptionCheckBox.CheckState     == CheckState.Checked) PerceptionCheckBox.Checked      = false; break;
+                                case "выживание":         if (SurvivalCheckBox.CheckState       == CheckState.Checked) SurvivalCheckBox.Checked        = false; break;
+                                case "медицина":          if (MedicineCheckBox.CheckState       == CheckState.Checked) MedicineCheckBox.Checked        = false; break;
+                                case "проницательность":  if (DiscriminationCheckBox.CheckState == CheckState.Checked) DiscriminationCheckBox.Checked  = false; break;
+                                case "уход за животными": if (AnimalCareCheckBox.CheckState     == CheckState.Checked) AnimalCareCheckBox.Checked      = false; break;
+                                case "выступление":       if (PerformanceCheckBox.CheckState    == CheckState.Checked) PerformanceCheckBox.Checked     = false; break;
+                                case "запугивание":       if (IntimidationCheckBox.CheckState   == CheckState.Checked) IntimidationCheckBox.Checked    = false; break;
+                                case "обман":             if (DeceptionCheckBox.CheckState      == CheckState.Checked) DeceptionCheckBox.Checked       = false; break;
+                                case "убеждение":         if (PersuasionCheckBox.CheckState     == CheckState.Checked) PersuasionCheckBox.Checked      = false; break;
                             }
                         }
                     }
 
-                    // Применяем навыки новой предыстории
+                    // Применяем навыки новой предыстории.
+                    // Если навык уже отмечен (Checked) или имеет компетентность (Indeterminate) —
+                    // не понижаем и не дублируем.
                     if (background.Possesion != null)
                     {
                         foreach (string item in background.Possesion.Split(';'))
                         {
                             switch (item)
                             {
-                                case "атлетика":          AthleticsCheckBox.Checked       = true; break;
-                                case "акробатика":        AcrobaticsCheckBox.Checked      = true; break;
-                                case "ловкость рук":      DexterityCheckBox.Checked       = true; break;
-                                case "скрытность":        StealthCheckBox.Checked         = true; break;
-                                case "анализ":            DessectionCheckBox.Checked      = true; break;
-                                case "история":           HistoryCheckBox.Checked         = true; break;
-                                case "магия":             MagicCheckBox.Checked           = true; break;
-                                case "природа":           NatureCheckBox.Checked          = true; break;
-                                case "религия":           ReligionCheckBox.Checked        = true; break;
-                                case "восприятие":        PerceptionCheckBox.Checked      = true; break;
-                                case "выживание":         SurvivalCheckBox.Checked        = true; break;
-                                case "медицина":          MedicineCheckBox.Checked        = true; break;
-                                case "проницательность":  DiscriminationCheckBox.Checked  = true; break;
-                                case "уход за животными": AnimalCareCheckBox.Checked      = true; break;
-                                case "выступление":       PerformanceCheckBox.Checked     = true; break;
-                                case "запугивание":       IntimidationCheckBox.Checked    = true; break;
-                                case "обман":             DeceptionCheckBox.Checked       = true; break;
-                                case "убеждение":         PersuasionCheckBox.Checked      = true; break;
+                                case "атлетика":          if (AthleticsCheckBox.CheckState      == CheckState.Unchecked) AthleticsCheckBox.Checked      = true; break;
+                                case "акробатика":        if (AcrobaticsCheckBox.CheckState     == CheckState.Unchecked) AcrobaticsCheckBox.Checked      = true; break;
+                                case "ловкость рук":      if (DexterityCheckBox.CheckState      == CheckState.Unchecked) DexterityCheckBox.Checked       = true; break;
+                                case "скрытность":        if (StealthCheckBox.CheckState        == CheckState.Unchecked) StealthCheckBox.Checked         = true; break;
+                                case "анализ":            if (DessectionCheckBox.CheckState     == CheckState.Unchecked) DessectionCheckBox.Checked      = true; break;
+                                case "история":           if (HistoryCheckBox.CheckState        == CheckState.Unchecked) HistoryCheckBox.Checked         = true; break;
+                                case "магия":             if (MagicCheckBox.CheckState          == CheckState.Unchecked) MagicCheckBox.Checked           = true; break;
+                                case "природа":           if (NatureCheckBox.CheckState         == CheckState.Unchecked) NatureCheckBox.Checked          = true; break;
+                                case "религия":           if (ReligionCheckBox.CheckState       == CheckState.Unchecked) ReligionCheckBox.Checked        = true; break;
+                                case "восприятие":        if (PerceptionCheckBox.CheckState     == CheckState.Unchecked) PerceptionCheckBox.Checked      = true; break;
+                                case "выживание":         if (SurvivalCheckBox.CheckState       == CheckState.Unchecked) SurvivalCheckBox.Checked        = true; break;
+                                case "медицина":          if (MedicineCheckBox.CheckState       == CheckState.Unchecked) MedicineCheckBox.Checked        = true; break;
+                                case "проницательность":  if (DiscriminationCheckBox.CheckState == CheckState.Unchecked) DiscriminationCheckBox.Checked  = true; break;
+                                case "уход за животными": if (AnimalCareCheckBox.CheckState     == CheckState.Unchecked) AnimalCareCheckBox.Checked      = true; break;
+                                case "выступление":       if (PerformanceCheckBox.CheckState    == CheckState.Unchecked) PerformanceCheckBox.Checked     = true; break;
+                                case "запугивание":       if (IntimidationCheckBox.CheckState   == CheckState.Unchecked) IntimidationCheckBox.Checked    = true; break;
+                                case "обман":             if (DeceptionCheckBox.CheckState      == CheckState.Unchecked) DeceptionCheckBox.Checked       = true; break;
+                                case "убеждение":         if (PersuasionCheckBox.CheckState     == CheckState.Unchecked) PersuasionCheckBox.Checked      = true; break;
                             }
                         }
                     }

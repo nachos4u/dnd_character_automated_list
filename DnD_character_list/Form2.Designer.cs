@@ -36,6 +36,7 @@
             SpellsButton = new Button();
             InvetoryButton = new Button();
             label1 = new Label();
+            button1 = new Button();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
             SuspendLayout();
             // 
@@ -57,7 +58,7 @@
             SpesiesButton.TabIndex = 1;
             SpesiesButton.Text = "Обновить расы";
             SpesiesButton.UseVisualStyleBackColor = true;
-            SpesiesButton.Click += this.SpesiesButton_Click;
+            SpesiesButton.Click += SpesiesButton_Click;
             // 
             // BackgroundButton
             // 
@@ -116,11 +117,22 @@
             label1.TabIndex = 7;
             label1.Text = "⚠️ВНИМАНИЕ! Обновление с ttg.club занимает от 5 минут до 3часов!";
             // 
+            // button1
+            // 
+            button1.Location = new Point(508, 64);
+            button1.Name = "button1";
+            button1.Size = new Size(94, 29);
+            button1.TabIndex = 8;
+            button1.Text = "button1";
+            button1.UseVisualStyleBackColor = true;
+            button1.Click += button1_Click;
+            // 
             // Form2
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
+            Controls.Add(button1);
             Controls.Add(label1);
             Controls.Add(InvetoryButton);
             Controls.Add(SpellsButton);
@@ -149,5 +161,6 @@
         private Button SpellsButton;
         private Button InvetoryButton;
         private Label label1;
+        private Button button1;
     }
 }

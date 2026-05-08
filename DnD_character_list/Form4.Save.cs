@@ -38,7 +38,7 @@ namespace DnD_character_list
             KDUpDown.ValueChanged         += (s, e) => SaveCharacterToDb();
             CurDiceHPUpDown.ValueChanged  += (s, e) => SaveCharacterToDb();
 
-            // Характеристики — сохраняем и пересчитываем производные
+            // Характеристики — сохраняем и пересчитываем все производные
             StrengthUpDown.ValueChanged    += (s, e) => { SaveCharacterToDb(); UpdateCalculatedValues(); };
             AgilityUpDown.ValueChanged     += (s, e) => { SaveCharacterToDb(); UpdateCalculatedValues(); };
             StaminaUpDown.ValueChanged     += (s, e) => { SaveCharacterToDb(); UpdateCalculatedValues(); };
@@ -46,13 +46,14 @@ namespace DnD_character_list
             WisdomUpDown.ValueChanged      += (s, e) => { SaveCharacterToDb(); UpdateCalculatedValues(); };
             CharismaUpDown.ValueChanged    += (s, e) => { SaveCharacterToDb(); UpdateCalculatedValues(); };
 
-            // Спасброски
-            StrengthCheckBox.CheckedChanged    += (s, e) => SaveCharacterToDb();
-            AgilityCheckBox.CheckedChanged     += (s, e) => SaveCharacterToDb();
-            StaminaCheckBox.CheckedChanged     += (s, e) => SaveCharacterToDb();
-            IntelligenceCheckBox.CheckedChanged += (s, e) => SaveCharacterToDb();
-            WisdomCheckBox.CheckedChanged      += (s, e) => SaveCharacterToDb();
-            CharismaCheckBox.CheckedChanged    += (s, e) => SaveCharacterToDb();
+            // Спасброски — используем CheckStateChanged (ловит все переходы состояния)
+            // При смене спасброска пересчитываем метку спасброска
+            StrengthCheckBox.CheckStateChanged    += (s, e) => { SaveCharacterToDb(); UpdateCalculatedValues(); };
+            AgilityCheckBox.CheckStateChanged     += (s, e) => { SaveCharacterToDb(); UpdateCalculatedValues(); };
+            StaminaCheckBox.CheckStateChanged     += (s, e) => { SaveCharacterToDb(); UpdateCalculatedValues(); };
+            IntelligenceCheckBox.CheckStateChanged += (s, e) => { SaveCharacterToDb(); UpdateCalculatedValues(); };
+            WisdomCheckBox.CheckStateChanged      += (s, e) => { SaveCharacterToDb(); UpdateCalculatedValues(); };
+            CharismaCheckBox.CheckStateChanged    += (s, e) => { SaveCharacterToDb(); UpdateCalculatedValues(); };
 
             // Броски смерти
             WinCheck1.CheckedChanged  += (s, e) => SaveCharacterToDb();
@@ -62,13 +63,10 @@ namespace DnD_character_list
             LoseCheck2.CheckedChanged += (s, e) => SaveCharacterToDb();
             LoseCheck3.CheckedChanged += (s, e) => SaveCharacterToDb();
 
-            // Навыки — сохраняем; восприятие также пересчитывает пассивное восприятие
-            PerceptionCheckBox.CheckedChanged += (s, e) => { SaveCharacterToDb(); UpdateCalculatedValues(); };
+            // Навыки — CheckStateChanged ловит и Checked, и Indeterminate (компетентность).
+            // При любом изменении пересчитываем метки навыков.
             foreach (var cb in GetAllSkillCheckBoxes())
-            {
-                if (cb != PerceptionCheckBox)
-                    cb.CheckedChanged += (s, e) => SaveCharacterToDb();
-            }
+                cb.CheckStateChanged += (s, e) => { SaveCharacterToDb(); UpdateCalculatedValues(); };
         }
 
         // ─── Сохранение персонажа в БД ────────────────────────────────────────────
@@ -127,7 +125,7 @@ namespace DnD_character_list
                 if (LoseCheck3.Checked) loseCount++;
                 character.SpasLose = loseCount;
 
-                // Навыки
+                // Навыки (Checked = умение, Indeterminate = компетентность)
                 string possnew = null;
                 foreach (var poss in GetAllSkillCheckBoxes())
                 {

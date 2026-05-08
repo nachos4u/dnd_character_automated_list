@@ -97,26 +97,36 @@ namespace DnD_character_list
         // ─── Добавление кнопок JSON ────────────────────────────────────────────────
         private void AddJsonButtons()
         {
-            var exportBtn = new Button
+            var exportJsonBtn = new Button
             {
                 Text = "Экспорт JSON",
                 Location = new Point(636, 135),
                 Size = new Size(149, 29),
                 UseVisualStyleBackColor = false
             };
-            exportBtn.Click += ExportJsonButton_Click;
+            exportJsonBtn.Click += ExportJsonButton_Click;
 
-            var importBtn = new Button
+            var importJsonBtn = new Button
             {
                 Text = "Импорт JSON",
                 Location = new Point(636, 100),
                 Size = new Size(149, 29),
                 UseVisualStyleBackColor = false
             };
-            importBtn.Click += ImportJsonButton_Click;
+            importJsonBtn.Click += ImportJsonButton_Click;
 
-            this.Controls.Add(exportBtn);
-            this.Controls.Add(importBtn);
+            var exportPdfBtn = new Button
+            {
+                Text = "Экспорт PDF",
+                Location = new Point(636, 65),
+                Size = new Size(149, 29),
+                UseVisualStyleBackColor = false
+            };
+            exportPdfBtn.Click += ExportPdfButton_Click;
+
+            this.Controls.Add(exportJsonBtn);
+            this.Controls.Add(importJsonBtn);
+            this.Controls.Add(exportPdfBtn);
         }
 
         // ─── JSON экспорт / импорт ─────────────────────────────────────────────────

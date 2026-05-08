@@ -35,7 +35,6 @@ namespace DnD_character_list
                 await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
                 var document = JsonSerializer.Deserialize<JsonElement>(jsonText);
-
                 if (document.ValueKind != JsonValueKind.Array) return;
 
                 var urls = new List<string>();
@@ -98,15 +97,14 @@ namespace DnD_character_list
                         using var playwrightLocal = await Playwright.CreateAsync();
                         await using var browserLocal = await playwrightLocal.Chromium.LaunchAsync(new()
                         {
-                            Headless = false,
-                            Proxy = proxy
+                            Headless = false
                         });
 
                         var pageLocal = await browserLocal.NewPageAsync();
 
-                        HashSet<string> savedNames;
-                        using (var dbCheck = new DDInformationContext())
-                            savedNames = dbCheck.Species.Select(s => s.Name).ToHashSet();
+                        // Tracks names processed in this run only — no DB pre-load,
+                        // so existing records are always updated.
+                        var savedNames = new HashSet<string>();
 
                         foreach (var url in urlsChunk)
                         {
@@ -133,20 +131,34 @@ namespace DnD_character_list
                                     foreach (var species in parsed)
                                     {
                                         speciesToAdd.Add(species);
-                                        if (!savedNames.Contains(species.Name))
+
+                                        // Skip if already processed in this run (duplicate URL / subrace overlap)
+                                        if (savedNames.Contains(species.Name)) continue;
+                                        savedNames.Add(species.Name);
+
+                                        try
                                         {
-                                            savedNames.Add(species.Name);
-                                            try
+                                            using var dbSave = new DDInformationContext();
+                                            var existing = dbSave.Species.FirstOrDefault(s => s.Name == species.Name);
+                                            if (existing != null)
                                             {
-                                                using var dbSave = new DDInformationContext();
+                                                existing.SpeciesChaTics = species.SpeciesChaTics;
+                                                existing.SpeciesSkills  = species.SpeciesSkills;
+                                                existing.Description    = species.Description;
+                                                existing.Source         = species.Source;
+                                                existing.Speed          = species.Speed;
+                                                Console.WriteLine($"[ОБНОВЛЕНО] Вид: {species.Name}");
+                                            }
+                                            else
+                                            {
                                                 dbSave.Species.Add(species);
-                                                await dbSave.SaveChangesAsync();
-                                                Console.WriteLine($"[УСПЕХ] Добавлена раса: {species.Name}");
+                                                Console.WriteLine($"[ДОБАВЛЕНО] Вид: {species.Name}");
                                             }
-                                            catch (Exception saveEx)
-                                            {
-                                                Console.WriteLine($"[ОШИБКА сохранения] {species.Name}: {saveEx.InnerException?.Message ?? saveEx.Message}");
-                                            }
+                                            await dbSave.SaveChangesAsync();
+                                        }
+                                        catch (Exception saveEx)
+                                        {
+                                            Console.WriteLine($"[ОШИБКА сохранения] {species.Name}: {saveEx.InnerException?.Message ?? saveEx.Message}");
                                         }
                                     }
                                 }
@@ -369,27 +381,41 @@ namespace DnD_character_list
             return result;
         }
 
-        // Fix 7: убираем HTML-разметку, оставляем текст
         private static string StripHtml(string text) =>
             System.Text.RegularExpressions.Regex.Replace(text ?? "", "<[^>]+>", "");
 
         private async Task SaveSpeciesToDatabase(ConcurrentBag<Species> speciesToAdd)
         {
             using var db = new DDInformationContext();
-            var existingNames = db.Species.Select(s => s.Name).ToHashSet();
 
-            var newSpecies = speciesToAdd
-                .Where(s => !existingNames.Contains(s.Name))
+            // Deduplicate by name within the collected bag
+            var unique = speciesToAdd
                 .GroupBy(s => s.Name)
                 .Select(g => g.First())
                 .ToList();
 
-            if (newSpecies.Any())
+            int added = 0, updated = 0;
+            foreach (var species in unique)
             {
-                await db.Species.AddRangeAsync(newSpecies);
-                await db.SaveChangesAsync();
-                Console.WriteLine($"Добавлено {newSpecies.Count} новых рас");
+                var existing = db.Species.FirstOrDefault(s => s.Name == species.Name);
+                if (existing != null)
+                {
+                    existing.SpeciesChaTics = species.SpeciesChaTics;
+                    existing.SpeciesSkills  = species.SpeciesSkills;
+                    existing.Description    = species.Description;
+                    existing.Source         = species.Source;
+                    existing.Speed          = species.Speed;
+                    updated++;
+                }
+                else
+                {
+                    db.Species.Add(species);
+                    added++;
+                }
             }
+
+            await db.SaveChangesAsync();
+            Console.WriteLine($"Итог: добавлено {added}, обновлено {updated} видов");
         }
     }
 }
