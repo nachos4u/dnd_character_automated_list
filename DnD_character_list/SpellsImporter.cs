@@ -245,6 +245,11 @@ namespace DnD_character_list
                         break;
                     case "components" when raceDocument.Value.ValueKind == JsonValueKind.Object:
                         components = ParseComponents(raceDocument.Value);
+                        foreach (var dok in raceDocument.Value.EnumerateObject())
+                        {
+                            if (dok.Name == "m")
+                                material_component = dok.Value.GetString() ?? "";
+                        }
                         break;
                     case "source" when raceDocument.Value.ValueKind == JsonValueKind.Object:
                         source = raceDocument.Value.GetProperty("shortName").GetString() ?? "";
