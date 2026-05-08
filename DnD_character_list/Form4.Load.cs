@@ -207,6 +207,9 @@ namespace DnD_character_list
 
                 // Заполняем вычисляемые значения после загрузки
                 UpdateCalculatedValues();
+
+                // Загружаем заклинания персонажа и строим страницу карточек
+                LoadCharacterSpells();
             }
         }
 

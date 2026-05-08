@@ -51,6 +51,12 @@
     <Compile Update="Form4.Pdf.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="Form4.Spells.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="SpellPickerForm.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Update="CharacterJsonSerializer.cs">
       <SubType>Code</SubType>
     </Compile>

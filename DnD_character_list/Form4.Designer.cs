@@ -191,6 +191,8 @@
             IntSpas = new Label();
             WisSpas = new Label();
             ChaSpas = new Label();
+            TraitAddButton = new Button();
+            InventoryAddButton = new Button();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox2).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox3).BeginInit();
@@ -1659,12 +1661,33 @@
             ChaSpas.Size = new Size(0, 20);
             ChaSpas.TabIndex = 212;
             // 
+            // TraitAddButton
+            // 
+            TraitAddButton.Location = new Point(796, 1414);
+            TraitAddButton.Name = "TraitAddButton";
+            TraitAddButton.Size = new Size(32, 33);
+            TraitAddButton.TabIndex = 213;
+            TraitAddButton.Text = "+";
+            TraitAddButton.UseVisualStyleBackColor = true;
+            // 
+            // InventoryAddButton
+            // 
+            InventoryAddButton.Font = new Font("Segoe UI", 6F);
+            InventoryAddButton.Location = new Point(1097, 751);
+            InventoryAddButton.Name = "InventoryAddButton";
+            InventoryAddButton.Size = new Size(32, 20);
+            InventoryAddButton.TabIndex = 214;
+            InventoryAddButton.Text = "+";
+            InventoryAddButton.UseVisualStyleBackColor = true;
+            // 
             // Form4
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             AutoScroll = true;
             ClientSize = new Size(1334, 1175);
+            Controls.Add(InventoryAddButton);
+            Controls.Add(TraitAddButton);
             Controls.Add(ChaSpas);
             Controls.Add(WisSpas);
             Controls.Add(IntSpas);
@@ -2028,5 +2051,7 @@
         private Label IntSpas;
         private Label WisSpas;
         private Label ChaSpas;
+        private Button TraitAddButton;
+        private Button InventoryAddButton;
     }
 }

@@ -67,13 +67,18 @@ namespace DnD_character_list
             FullClassTextBox2 = new TextBox();
             FullClassTextBox2.Location = new Point(148, 3920);
             FullClassTextBox2.Multiline = true;
-            FullClassTextBox2.ScrollBars = ScrollBars.Vertical;
             FullClassTextBox2.Size = new Size(1036, 1528);
 
             this.Controls.Add(newPb);
             this.Controls.Add(newLbl);
             this.Controls.Add(FullClassTextBox2);
             newPb.SendToBack(); // вызываем ПОСЛЕ добавления всех трёх
+
+            // Вычисляем Y-координату для страниц карточек заклинаний
+            // (pictureBox5 — это SpellList, после сдвига его нижняя граница ≈ 10899)
+            var spellListPb = this.Controls.OfType<PictureBox>().FirstOrDefault(pb => pb.Name == "pictureBox5");
+            int spellCardsBaseY = (spellListPb?.Bottom ?? 10899) + 50;
+            InitSpellCardSection(spellCardsBaseY);
 
             // Настраиваем диапазоны для вычисляемых NumericUpDown
             InitiativaUpDown.Minimum = -10;
@@ -193,15 +198,6 @@ namespace DnD_character_list
                 if (result == DialogResult.Cancel)
                     e.Cancel = true;
             }
-        }
-
-        private void NewSpellButton_Click(object sender, EventArgs e)
-        {
-            MessageBox.Show(
-                "Ахуел?",
-                "Подтверждение выход",
-                MessageBoxButtons.OKCancel,
-                MessageBoxIcon.Question);
         }
 
         private void DataBaseButton_Click(object sender, EventArgs e)
