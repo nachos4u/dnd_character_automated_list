@@ -60,6 +60,27 @@
     <Compile Update="CharacterJsonSerializer.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="FeatsImporter.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="ItemsImporter.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="TraitPickerForm.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="ItemPickerForm.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Form4.Items.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Form4.Traits.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="ImportProgressForm.cs">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
 
   <ItemGroup>

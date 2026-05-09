@@ -88,6 +88,7 @@
             TraitsButton.TabIndex = 4;
             TraitsButton.Text = "Обновить черты";
             TraitsButton.UseVisualStyleBackColor = true;
+            TraitsButton.Click += TraitsButton_Click;
             // 
             // SpellsButton
             // 
@@ -107,6 +108,7 @@
             InvetoryButton.TabIndex = 6;
             InvetoryButton.Text = "Обновить сокровища";
             InvetoryButton.UseVisualStyleBackColor = true;
+            InvetoryButton.Click += InvetoryButton_Click;
             // 
             // label1
             // 
@@ -119,11 +121,11 @@
             // 
             // button1
             // 
-            button1.Location = new Point(508, 64);
+            button1.Location = new Point(491, 13);
             button1.Name = "button1";
-            button1.Size = new Size(94, 29);
+            button1.Size = new Size(131, 57);
             button1.TabIndex = 8;
-            button1.Text = "button1";
+            button1.Text = "Обновить всё";
             button1.UseVisualStyleBackColor = true;
             button1.Click += button1_Click;
             // 

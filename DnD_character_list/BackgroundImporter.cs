@@ -7,22 +7,23 @@ namespace DnD_character_list
 {
     internal class BackgroundImporter
     {
-        public async Task ImportBackgroundAsync()
+        public async Task ImportBackgroundAsync(
+            IProgress<(int current, int total, string name)>? progress = null)
         {
             var proxies = new List<string>
             {
                 "188.130.184.6:3000@YELcgn68:PYFuji2l"
             };
             var backgroundToAdd = new ConcurrentBag<Background>();
-            var browserTasks = new List<Task>();
+            var browserTasks    = new List<Task>();
 
             try
             {
                 using var playwright = await Playwright.CreateAsync();
                 await using var browser = await playwright.Chromium.LaunchAsync(new()
                 {
-                    Headless = false,
-                    Timeout = 60000
+                    Headless = true,
+                    Timeout  = 60000
                 });
 
                 var page = await browser.NewPageAsync();
@@ -42,7 +43,6 @@ namespace DnD_character_list
                 {
                     if (item.ValueKind != JsonValueKind.Object) continue;
                     if (!IsBasicSource(item)) continue;
-
                     if (item.TryGetProperty("url", out var urlElement))
                     {
                         var url = urlElement.GetString();
@@ -50,6 +50,9 @@ namespace DnD_character_list
                             urls.Add(url);
                     }
                 }
+
+                int   total   = urls.Count;
+                int[] counter = { 0 };
 
                 var chunks = urls
                     .Select((url, i) => new { url, i })
@@ -60,13 +63,13 @@ namespace DnD_character_list
                 for (int i = 0; i < chunks.Count; i++)
                 {
                     var urlsChunk = chunks[i];
-                    var parts = proxies[i].Split('@');
+                    var parts  = proxies[i].Split('@');
                     var ipPort = parts[0];
-                    var creds = parts[1].Split(':');
+                    var creds  = parts[1].Split(':');
 
                     var proxy = new Proxy
                     {
-                        Server = $"https://{ipPort}",
+                        Server   = $"https://{ipPort}",
                         Username = creds[0],
                         Password = creds[1]
                     };
@@ -79,14 +82,12 @@ namespace DnD_character_list
                             Headless = false
                         });
 
-                        var pageLocal = await browserLocal.NewPageAsync();
-
-                        // Tracks names processed in this run only — no DB pre-load,
-                        // so existing records are always updated.
+                        var pageLocal  = await browserLocal.NewPageAsync();
                         var savedNames = new HashSet<string>();
 
                         foreach (var url in urlsChunk)
                         {
+                            string? processedName = null;
                             try
                             {
                                 await Task.Delay(Random.Shared.Next(13000, 15000));
@@ -94,50 +95,50 @@ namespace DnD_character_list
                                 var fullUrl = "https://5e14.ttg.club" + url;
                                 await pageLocal.GotoAsync(fullUrl);
 
-                                var apiUrl = "/api/v1" + url;
+                                var apiUrl      = "/api/v1" + url;
                                 var apiResponse = await pageLocal.WaitForResponseAsync(r =>
                                     r.Url.Contains(apiUrl), new() { Timeout = 30000 });
 
-                                var bytes = await apiResponse.BodyAsync();
+                                var bytes       = await apiResponse.BodyAsync();
                                 string jsonTextBg = Encoding.UTF8.GetString(bytes);
-
-                                var bgDocument = JsonSerializer.Deserialize<JsonElement>(jsonTextBg);
+                                var bgDocument  = JsonSerializer.Deserialize<JsonElement>(jsonTextBg);
 
                                 if (bgDocument.ValueKind == JsonValueKind.Object)
                                 {
                                     var bg = ParseBackground(bgDocument);
                                     if (bg != null)
                                     {
+                                        processedName = bg.Name;
                                         backgroundToAdd.Add(bg);
 
-                                        // Skip if already processed in this run (duplicate URL)
-                                        if (savedNames.Contains(bg.Name)) continue;
-                                        savedNames.Add(bg.Name);
-
-                                        try
+                                        if (!savedNames.Contains(bg.Name))
                                         {
-                                            using var dbSave = new DDInformationContext();
-                                            var existing = dbSave.Backgrounds.FirstOrDefault(b => b.Name == bg.Name);
-                                            if (existing != null)
+                                            savedNames.Add(bg.Name);
+                                            try
                                             {
-                                                existing.Description   = bg.Description;
-                                                existing.Source        = bg.Source;
-                                                existing.Possesion     = bg.Possesion;
-                                                existing.Gm            = bg.Gm;
-                                                existing.Invetary      = bg.Invetary;
-                                                existing.ToolOwnership = bg.ToolOwnership;
-                                                Console.WriteLine($"[ОБНОВЛЕНО] Предыстория: {bg.Name}");
+                                                using var dbSave = new DDInformationContext();
+                                                var existing = dbSave.Backgrounds.FirstOrDefault(b => b.Name == bg.Name);
+                                                if (existing != null)
+                                                {
+                                                    existing.Description   = bg.Description;
+                                                    existing.Source        = bg.Source;
+                                                    existing.Possesion     = bg.Possesion;
+                                                    existing.Gm            = bg.Gm;
+                                                    existing.Invetary      = bg.Invetary;
+                                                    existing.ToolOwnership = bg.ToolOwnership;
+                                                    Console.WriteLine($"[ОБНОВЛЕНО] Предыстория: {bg.Name}");
+                                                }
+                                                else
+                                                {
+                                                    dbSave.Backgrounds.Add(bg);
+                                                    Console.WriteLine($"[ДОБАВЛЕНО] Предыстория: {bg.Name}");
+                                                }
+                                                await dbSave.SaveChangesAsync();
                                             }
-                                            else
+                                            catch (Exception saveEx)
                                             {
-                                                dbSave.Backgrounds.Add(bg);
-                                                Console.WriteLine($"[ДОБАВЛЕНО] Предыстория: {bg.Name}");
+                                                Console.WriteLine($"[ОШИБКА сохранения] {bg.Name}: {saveEx.InnerException?.Message ?? saveEx.Message}");
                                             }
-                                            await dbSave.SaveChangesAsync();
-                                        }
-                                        catch (Exception saveEx)
-                                        {
-                                            Console.WriteLine($"[ОШИБКА сохранения] {bg.Name}: {saveEx.InnerException?.Message ?? saveEx.Message}");
                                         }
                                     }
                                 }
@@ -145,6 +146,11 @@ namespace DnD_character_list
                             catch (Exception ex)
                             {
                                 Console.WriteLine($"Ошибка для URL {url}: {ex.Message}");
+                            }
+                            finally
+                            {
+                                var cur = Interlocked.Increment(ref counter[0]);
+                                progress?.Report((cur, total, processedName ?? url));
                             }
                         }
                     }));
@@ -178,13 +184,13 @@ namespace DnD_character_list
 
         private Background ParseBackground(JsonElement property)
         {
-            string name = "";
-            string skill = "";
-            int gm = 0;
-            string source = "";
+            string name      = "";
+            string skill     = "";
+            int    gm        = 0;
+            string source    = "";
             string inventory = "";
-            string desc = "";
-            string tools = "";
+            string desc      = "";
+            string tools     = "";
 
             foreach (var prop in property.EnumerateObject())
             {
@@ -221,12 +227,12 @@ namespace DnD_character_list
 
             return new Background
             {
-                Name = name,
-                Description = desc,
-                Source = source,
-                Possesion = skill,
-                Gm = gm,
-                Invetary = inventory,
+                Name          = name,
+                Description   = desc,
+                Source        = source,
+                Possesion     = skill,
+                Gm            = gm,
+                Invetary      = inventory,
                 ToolOwnership = tools
             };
         }
@@ -238,7 +244,6 @@ namespace DnD_character_list
         {
             using var db = new DDInformationContext();
 
-            // Deduplicate by name within the collected bag
             var unique = backgroundToAdd
                 .GroupBy(b => b.Name)
                 .Select(g => g.First())

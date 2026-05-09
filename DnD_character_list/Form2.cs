@@ -46,38 +46,98 @@ namespace DnD_character_list
 
         private async void SpesiesButton_Click(object sender, EventArgs e)
         {
-            var importer = new SpeciesImporter();
-            await importer.ImportRacesAsync();
+            using var progressForm = new ImportProgressForm();
+            progressForm.Show(this);
+
+            var progress = new Progress<(int current, int total, string name)>(p =>
+                progressForm.ReportProgress(p.current, p.total, p.name));
+
+            await new SpeciesImporter().ImportRacesAsync(progress);
+
+            progressForm.Close();
         }
 
         private async void BackgroundButton_Click(object sender, EventArgs e)
         {
-            var importer = new BackgroundImporter();
-            await importer.ImportBackgroundAsync();
+            using var progressForm = new ImportProgressForm();
+            progressForm.Show(this);
+
+            var progress = new Progress<(int current, int total, string name)>(p =>
+                progressForm.ReportProgress(p.current, p.total, p.name));
+
+            await new BackgroundImporter().ImportBackgroundAsync(progress);
+
+            progressForm.Close();
         }
 
         private async void ClassesButton_Click(object sender, EventArgs e)
         {
-            var importer = new ClassesImporter();
-            await importer.ImportClassAsync();
+            using var progressForm = new ImportProgressForm();
+            progressForm.Show(this);
+
+            var progress = new Progress<(int current, int total, string name)>(p =>
+                progressForm.ReportProgress(p.current, p.total, p.name));
+
+            await new ClassesImporter().ImportClassAsync(progress);
+
+            progressForm.Close();
         }
 
         private async void SpellsButton_Click(object sender, EventArgs e)
         {
-            var importer = new SpellsImporter();
-            await importer.ImportSpellAsync();
+            using var progressForm = new ImportProgressForm();
+            progressForm.Show(this);
+
+            var progress = new Progress<(int current, int total, string name)>(p =>
+                progressForm.ReportProgress(p.current, p.total, p.name));
+
+            await new SpellsImporter().ImportSpellAsync(progress);
+
+            progressForm.Close();
         }
 
         private async void button1_Click(object sender, EventArgs e)
         {
-            var importerSpells = new SpellsImporter();
-            var importerClasses = new ClassesImporter();
-            var importerBackground = new BackgroundImporter();
-            var importerSpecies = new SpeciesImporter();
-            await importerSpells.ImportSpellAsync();
-            await importerClasses.ImportClassAsync();
-            await importerBackground.ImportBackgroundAsync();
-            await importerSpecies.ImportRacesAsync();
+            using var progressForm = new ImportProgressForm();
+            progressForm.Show(this);
+
+            var progress = new Progress<(int current, int total, string name)>(p =>
+                progressForm.ReportProgress(p.current, p.total, p.name));
+
+            await new SpellsImporter().ImportSpellAsync(progress);
+            await new ClassesImporter().ImportClassAsync(progress);
+            await new BackgroundImporter().ImportBackgroundAsync(progress);
+            await new SpeciesImporter().ImportRacesAsync(progress);
+            await new ItemsImporter().ImportItemsAsync(progress);
+            await new FeatsImporter().ImportFeatsAsync(progress);
+
+            progressForm.Close();
+        }
+
+        private async void InvetoryButton_Click(object sender, EventArgs e)
+        {
+            using var progressForm = new ImportProgressForm();
+            progressForm.Show(this);
+
+            var progress = new Progress<(int current, int total, string name)>(p =>
+                progressForm.ReportProgress(p.current, p.total, p.name));
+
+            await new ItemsImporter().ImportItemsAsync(progress);
+
+            progressForm.Close();
+        }
+
+        private async void TraitsButton_Click(object sender, EventArgs e)
+        {
+            using var progressForm = new ImportProgressForm();
+            progressForm.Show(this);
+
+            var progress = new Progress<(int current, int total, string name)>(p =>
+                progressForm.ReportProgress(p.current, p.total, p.name));
+
+            await new FeatsImporter().ImportFeatsAsync(progress);
+
+            progressForm.Close();
         }
     }
 }

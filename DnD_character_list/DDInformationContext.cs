@@ -135,7 +135,13 @@ public partial class DDInformationContext : DbContext
 
             entity.Property(e => e.IdItem).HasColumnName("ID_item");
             entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.Name).HasMaxLength(50).HasColumnName("name");
+            entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.Source).HasMaxLength(10).HasColumnName("source");
+            entity.Property(e => e.Price).HasMaxLength(50).HasColumnName("price");
+            entity.Property(e => e.Weight).HasColumnName("weight");
+            entity.Property(e => e.IsMagic).HasColumnName("is_magic").HasDefaultValue(false);
+            entity.Property(e => e.Rarity).HasMaxLength(50).HasColumnName("rarity");
+            entity.Property(e => e.ItemType).HasMaxLength(100).HasColumnName("item_type");
         });
 
         modelBuilder.Entity<ItemInventory>(entity =>
@@ -253,8 +259,11 @@ public partial class DDInformationContext : DbContext
             entity.HasKey(e => e.IdTrait);
 
             entity.Property(e => e.IdTrait).HasColumnName("ID_trait");
-            entity.Property(e => e.CharTics).HasMaxLength(50).HasColumnName("char-tics");
+            entity.Property(e => e.CharTics).HasMaxLength(50).HasColumnName("char-tics").IsRequired(false);
             entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.Requirements).HasColumnName("requirements");
+            entity.Property(e => e.Source).HasMaxLength(10).HasColumnName("source");
 
             entity.HasMany(d => d.IdCharacters).WithMany(p => p.IdTraits)
                 .UsingEntity<Dictionary<string, object>>(

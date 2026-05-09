@@ -7,7 +7,8 @@ namespace DnD_character_list
 {
     internal class SpeciesImporter
     {
-        public async Task ImportRacesAsync()
+        public async Task ImportRacesAsync(
+            IProgress<(int current, int total, string name)>? progress = null)
         {
             var proxies = new List<string>
             {
@@ -21,8 +22,8 @@ namespace DnD_character_list
                 using var playwright = await Playwright.CreateAsync();
                 await using var browser = await playwright.Chromium.LaunchAsync(new()
                 {
-                    Headless = false,
-                    Timeout = 60000
+                    Headless = true,
+                    Timeout  = 60000
                 });
 
                 var page = await browser.NewPageAsync();
@@ -43,7 +44,7 @@ namespace DnD_character_list
                     if (item.ValueKind != JsonValueKind.Object) continue;
 
                     bool isBasicSource = false;
-                    bool isMPMM = false;
+                    bool isMPMM        = false;
 
                     if (item.TryGetProperty("source", out var sourceElement) &&
                         sourceElement.ValueKind == JsonValueKind.Object)
@@ -72,6 +73,9 @@ namespace DnD_character_list
                     }
                 }
 
+                int   total   = urls.Count;
+                int[] counter = { 0 };
+
                 var chunks = urls
                     .Select((url, i) => new { url, i })
                     .GroupBy(x => x.i % proxies.Count)
@@ -81,13 +85,13 @@ namespace DnD_character_list
                 for (int i = 0; i < chunks.Count; i++)
                 {
                     var urlsChunk = chunks[i];
-                    var parts = proxies[i].Split('@');
+                    var parts  = proxies[i].Split('@');
                     var ipPort = parts[0];
-                    var creds = parts[1].Split(':');
+                    var creds  = parts[1].Split(':');
 
                     var proxy = new Proxy
                     {
-                        Server = $"https://{ipPort}",
+                        Server   = $"https://{ipPort}",
                         Username = creds[0],
                         Password = creds[1]
                     };
@@ -97,17 +101,15 @@ namespace DnD_character_list
                         using var playwrightLocal = await Playwright.CreateAsync();
                         await using var browserLocal = await playwrightLocal.Chromium.LaunchAsync(new()
                         {
-                            Headless = false
+                            Headless = true
                         });
 
-                        var pageLocal = await browserLocal.NewPageAsync();
-
-                        // Tracks names processed in this run only — no DB pre-load,
-                        // so existing records are always updated.
+                        var pageLocal  = await browserLocal.NewPageAsync();
                         var savedNames = new HashSet<string>();
 
                         foreach (var url in urlsChunk)
                         {
+                            string? processedName = null;
                             try
                             {
                                 await Task.Delay(Random.Shared.Next(13000, 15000));
@@ -115,14 +117,13 @@ namespace DnD_character_list
                                 var fullUrl = "https://5e14.ttg.club" + url;
                                 await pageLocal.GotoAsync(fullUrl);
 
-                                var apiUrl = "/api/v1" + url;
+                                var apiUrl      = "/api/v1" + url;
                                 var apiResponse = await pageLocal.WaitForResponseAsync(r =>
                                     r.Url.Contains(apiUrl), new() { Timeout = 30000 });
 
-                                var bytes = await apiResponse.BodyAsync();
+                                var bytes         = await apiResponse.BodyAsync();
                                 string jsonTextRace = Encoding.UTF8.GetString(bytes);
-
-                                var raceDocument = JsonSerializer.Deserialize<JsonElement>(jsonTextRace);
+                                var raceDocument  = JsonSerializer.Deserialize<JsonElement>(jsonTextRace);
 
                                 if (raceDocument.ValueKind == JsonValueKind.Object)
                                 {
@@ -130,35 +131,36 @@ namespace DnD_character_list
 
                                     foreach (var species in parsed)
                                     {
+                                        if (processedName == null) processedName = species.Name;
                                         speciesToAdd.Add(species);
 
-                                        // Skip if already processed in this run (duplicate URL / subrace overlap)
-                                        if (savedNames.Contains(species.Name)) continue;
-                                        savedNames.Add(species.Name);
-
-                                        try
+                                        if (!savedNames.Contains(species.Name))
                                         {
-                                            using var dbSave = new DDInformationContext();
-                                            var existing = dbSave.Species.FirstOrDefault(s => s.Name == species.Name);
-                                            if (existing != null)
+                                            savedNames.Add(species.Name);
+                                            try
                                             {
-                                                existing.SpeciesChaTics = species.SpeciesChaTics;
-                                                existing.SpeciesSkills  = species.SpeciesSkills;
-                                                existing.Description    = species.Description;
-                                                existing.Source         = species.Source;
-                                                existing.Speed          = species.Speed;
-                                                Console.WriteLine($"[ОБНОВЛЕНО] Вид: {species.Name}");
+                                                using var dbSave = new DDInformationContext();
+                                                var existing = dbSave.Species.FirstOrDefault(s => s.Name == species.Name);
+                                                if (existing != null)
+                                                {
+                                                    existing.SpeciesChaTics = species.SpeciesChaTics;
+                                                    existing.SpeciesSkills  = species.SpeciesSkills;
+                                                    existing.Description    = species.Description;
+                                                    existing.Source         = species.Source;
+                                                    existing.Speed          = species.Speed;
+                                                    Console.WriteLine($"[ОБНОВЛЕНО] Вид: {species.Name}");
+                                                }
+                                                else
+                                                {
+                                                    dbSave.Species.Add(species);
+                                                    Console.WriteLine($"[ДОБАВЛЕНО] Вид: {species.Name}");
+                                                }
+                                                await dbSave.SaveChangesAsync();
                                             }
-                                            else
+                                            catch (Exception saveEx)
                                             {
-                                                dbSave.Species.Add(species);
-                                                Console.WriteLine($"[ДОБАВЛЕНО] Вид: {species.Name}");
+                                                Console.WriteLine($"[ОШИБКА сохранения] {species.Name}: {saveEx.InnerException?.Message ?? saveEx.Message}");
                                             }
-                                            await dbSave.SaveChangesAsync();
-                                        }
-                                        catch (Exception saveEx)
-                                        {
-                                            Console.WriteLine($"[ОШИБКА сохранения] {species.Name}: {saveEx.InnerException?.Message ?? saveEx.Message}");
                                         }
                                     }
                                 }
@@ -166,6 +168,11 @@ namespace DnD_character_list
                             catch (Exception ex)
                             {
                                 Console.WriteLine($"Ошибка для URL {url}: {ex.Message}");
+                            }
+                            finally
+                            {
+                                var cur = Interlocked.Increment(ref counter[0]);
+                                progress?.Report((cur, total, processedName ?? url));
                             }
                         }
                     }));
@@ -184,13 +191,13 @@ namespace DnD_character_list
 
         private List<Species> ParseMainRace(JsonElement property)
         {
-            var result = new List<Species>();
-            string name = "";
-            string skill = "";
+            var result    = new List<Species>();
+            string name   = "";
+            string skill  = "";
             string char_tics = "";
             string source = "";
-            string speed = "";
-            string desc = "";
+            string speed  = "";
+            string desc   = "";
 
             foreach (var prop in property.EnumerateObject())
             {
@@ -224,12 +231,12 @@ namespace DnD_character_list
             {
                 result.Insert(0, new Species
                 {
-                    Name = name,
+                    Name           = name,
                     SpeciesChaTics = char_tics,
-                    SpeciesSkills = skill,
-                    Description = desc,
-                    Source = source,
-                    Speed = speed
+                    SpeciesSkills  = skill,
+                    Description    = desc,
+                    Source         = source,
+                    Speed          = speed
                 });
             }
 
@@ -245,12 +252,12 @@ namespace DnD_character_list
             {
                 if (subrace.ValueKind != JsonValueKind.Object) continue;
 
-                string name = "";
-                string skill = "";
+                string name      = "";
+                string skill     = "";
                 string char_tics = "";
-                string source = "";
-                string speed = "";
-                string desc = "";
+                string source    = "";
+                string speed     = "";
+                string desc      = "";
 
                 foreach (var prop in subrace.EnumerateObject())
                 {
@@ -281,12 +288,12 @@ namespace DnD_character_list
                 {
                     result.Add(new Species
                     {
-                        Name = name,
+                        Name           = name,
                         SpeciesChaTics = char_tics,
-                        SpeciesSkills = skill,
-                        Description = desc,
-                        Source = source,
-                        Speed = speed
+                        SpeciesSkills  = skill,
+                        Description    = desc,
+                        Source         = source,
+                        Speed          = speed
                     });
                 }
             }
@@ -299,7 +306,7 @@ namespace DnD_character_list
             var result = "";
             foreach (var ability in abilitiesElement.EnumerateArray())
             {
-                var names = new List<string>();
+                var names  = new List<string>();
                 var values = new List<string>();
 
                 foreach (var prop in ability.EnumerateObject())
@@ -308,15 +315,15 @@ namespace DnD_character_list
                     {
                         switch (prop.Value.GetString())
                         {
-                            case "Сила": names.Add("сил"); break;
-                            case "Ловкость": names.Add("лов"); break;
-                            case "Телосложение": names.Add("тел"); break;
-                            case "Интеллект": names.Add("инт"); break;
-                            case "Мудрость": names.Add("муд"); break;
-                            case "Харизма": names.Add("хар"); break;
+                            case "Сила":             names.Add("сил");    break;
+                            case "Ловкость":         names.Add("лов");    break;
+                            case "Телосложение":     names.Add("тел");    break;
+                            case "Интеллект":        names.Add("инт");    break;
+                            case "Мудрость":         names.Add("муд");    break;
+                            case "Харизма":          names.Add("хар");    break;
                             case "+2 и +1 / +1 к трем": names.Add("21/111"); break;
-                            case "к другой": names.Add("другой"); break;
-                            case "к 2 другим": names.Add("2другим"); break;
+                            case "к другой":         names.Add("другой"); break;
+                            case "к 2 другим":       names.Add("2другим"); break;
                         }
                     }
                     else if (prop.Name == "value")
@@ -334,7 +341,7 @@ namespace DnD_character_list
         private string ParseSpeed(JsonElement speedElement)
         {
             var result = "";
-            var types = new List<string>();
+            var types  = new List<string>();
             var values = new List<string>();
 
             foreach (var speedEntry in speedElement.EnumerateArray())
@@ -345,8 +352,8 @@ namespace DnD_character_list
                     {
                         switch (prop.Value.GetString())
                         {
-                            case "летая": types.Add("лет"); break;
-                            case "плавая": types.Add("пла"); break;
+                            case "летая":   types.Add("лет"); break;
+                            case "плавая":  types.Add("пла"); break;
                         }
                     }
                     else if (prop.Name == "value")
@@ -388,7 +395,6 @@ namespace DnD_character_list
         {
             using var db = new DDInformationContext();
 
-            // Deduplicate by name within the collected bag
             var unique = speciesToAdd
                 .GroupBy(s => s.Name)
                 .Select(g => g.First())

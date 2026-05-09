@@ -11,5 +11,17 @@ public partial class Item
 
     public string Description { get; set; } = null!;
 
+    public string? Source { get; set; }
+
+    public string? Price { get; set; }
+
+    public float? Weight { get; set; }
+
+    public bool IsMagic { get; set; } = false;
+
+    public string? Rarity { get; set; }
+
+    public string? ItemType { get; set; }
+
     public virtual ICollection<ItemInventory> ItemInventories { get; set; } = new List<ItemInventory>();
 }

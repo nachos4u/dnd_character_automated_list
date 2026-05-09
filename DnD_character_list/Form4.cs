@@ -95,6 +95,9 @@ namespace DnD_character_list
             this.pictureBox2.MouseClick += pictureBox2_Click;
             _animTimer.Tick += AnimTimer_Tick;
 
+            InventoryAddButton.Click += InventoryAddButton_Click;
+            TraitAddButton.Click     += TraitAddButton_Click;
+
             WireAutoSave();
             Load_character();
         }
@@ -325,12 +328,12 @@ namespace DnD_character_list
                         {
                             switch (spas.Trim())
                             {
-                                case "Сила":        StrengthCheckBox.Checked = true;     break;
-                                case "Ловкость":    AgilityCheckBox.Checked = true;      break;
-                                case "Телосложение": StaminaCheckBox.Checked = true;     break;
-                                case "Интеллект":   IntelligenceCheckBox.Checked = true; break;
-                                case "Мудрость":    WisdomCheckBox.Checked = true;       break;
-                                case "Харизма":     CharismaCheckBox.Checked = true;     break;
+                                case "Сила": StrengthCheckBox.Checked = true; break;
+                                case "Ловкость": AgilityCheckBox.Checked = true; break;
+                                case "Телосложение": StaminaCheckBox.Checked = true; break;
+                                case "Интеллект": IntelligenceCheckBox.Checked = true; break;
+                                case "Мудрость": WisdomCheckBox.Checked = true; break;
+                                case "Харизма": CharismaCheckBox.Checked = true; break;
                             }
                         }
 
@@ -404,5 +407,7 @@ namespace DnD_character_list
 
             db.SaveChanges();
         }
+
+
     }
 }

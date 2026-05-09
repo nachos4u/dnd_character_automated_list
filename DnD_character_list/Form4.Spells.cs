@@ -162,6 +162,8 @@ namespace DnD_character_list
 
             if (!spells.Any())
             {
+                // Cascade: reposition item/trait cards even when spells section is empty
+                RebuildItemCardPages();
                 this.ResumeLayout(true);
                 return;
             }
@@ -224,10 +226,13 @@ namespace DnD_character_list
                 }
             }
 
-            // Расширяем область прокрутки и прокручиваем к первой странице
+            // Расширяем область прокрутки под заклинания
             var last   = _spellCardPages.Last();
             int needed = last.Bottom + 80;
             this.AutoScrollMinSize = new Size(this.AutoScrollMinSize.Width, needed);
+
+            // Cascade: reposition item/trait cards below spell pages
+            RebuildItemCardPages();
 
             this.ResumeLayout(true);
             this.Invalidate(true);

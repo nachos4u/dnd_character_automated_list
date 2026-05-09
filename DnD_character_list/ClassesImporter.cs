@@ -11,7 +11,8 @@ namespace DnD_character_list
         // Entry point
         // ──────────────────────────────────────────────────────────────
 
-        public async Task ImportClassAsync()
+        public async Task ImportClassAsync(
+            IProgress<(int current, int total, string name)>? progress = null)
         {
             try
             {
@@ -20,7 +21,7 @@ namespace DnD_character_list
                 using var playwright = await Playwright.CreateAsync();
                 await using var browser = await playwright.Chromium.LaunchAsync(new()
                 {
-                    Headless = false,
+                    Headless = true,
                     Timeout = 60000
                 });
 
@@ -39,6 +40,8 @@ namespace DnD_character_list
                 // We already have the data we need from the API response above.
 
                 var classInfoList = ParseClassInfoList(listJson);
+                int total     = classInfoList.Count;
+                int processed = 0;
 
                 foreach (var classInfo in classInfoList)
                 {
@@ -49,6 +52,10 @@ namespace DnD_character_list
                     catch (Exception ex)
                     {
                         Console.WriteLine($"[ОШИБКА] {classInfo.RusName}: {ex.Message}");
+                    }
+                    finally
+                    {
+                        progress?.Report((++processed, total, classInfo.RusName));
                     }
                 }
             }

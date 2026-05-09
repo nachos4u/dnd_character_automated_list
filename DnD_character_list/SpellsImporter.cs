@@ -10,7 +10,8 @@ namespace DnD_character_list
     {
         public int count_spell = 0;
 
-        public async Task ImportSpellAsync()
+        public async Task ImportSpellAsync(
+            IProgress<(int current, int total, string name)>? progress = null)
         {
             var proxies = new List<string>
             {
@@ -24,7 +25,7 @@ namespace DnD_character_list
                 using var playwright = await Playwright.CreateAsync();
                 await using var browser = await playwright.Chromium.LaunchAsync(new()
                 {
-                    Headless = false,
+                    Headless = true,
                     Timeout = 60000
                 });
 
@@ -32,8 +33,11 @@ namespace DnD_character_list
                 await page.GotoAsync("https://5e14.ttg.club/spells");
 
                 var urls = await GetAllSpellUrls(page);
+                int   total   = urls.Count;
+                int[] counter = { 0 };
 
-                await ProcessSpellsInBatches(urls, proxies, spellToAdd, browserTasks);
+                await ProcessSpellsInBatches(urls, proxies, spellToAdd, browserTasks,
+                    total, counter, progress);
 
                 await SaveSpellsToDatabase(spellToAdd);
             }
@@ -105,7 +109,14 @@ namespace DnD_character_list
             return false;
         }
 
-        private async Task ProcessSpellsInBatches(List<string> urls, List<string> proxies, ConcurrentBag<Spell> spellToAdd, List<Task> browserTasks)
+        private async Task ProcessSpellsInBatches(
+            List<string> urls,
+            List<string> proxies,
+            ConcurrentBag<Spell> spellToAdd,
+            List<Task> browserTasks,
+            int total,
+            int[] counter,
+            IProgress<(int current, int total, string name)>? progress)
         {
             var chunks = urls
                 .Select((url, i) => new { url, i })
@@ -122,7 +133,7 @@ namespace DnD_character_list
 
                 var proxy = new Proxy
                 {
-                    Server = $"https://{ipPort}",
+                    Server   = $"https://{ipPort}",
                     Username = creds[0],
                     Password = creds[1]
                 };
@@ -132,17 +143,15 @@ namespace DnD_character_list
                     using var playwrightLocal = await Playwright.CreateAsync();
                     await using var browserLocal = await playwrightLocal.Chromium.LaunchAsync(new()
                     {
-                        Headless = false
+                        Headless = true
                     });
 
-                    var pageLocal = await browserLocal.NewPageAsync();
-
-                    // Tracks names processed in this run only — no DB pre-load,
-                    // so existing records are always updated.
+                    var pageLocal  = await browserLocal.NewPageAsync();
                     var savedNames = new HashSet<string>();
 
                     foreach (var url in urlsChunk)
                     {
+                        string? processedName = null;
                         try
                         {
                             await Task.Delay(Random.Shared.Next(13000, 15000));
@@ -150,55 +159,55 @@ namespace DnD_character_list
                             var fullUrl = "https://5e14.ttg.club" + url;
                             await pageLocal.GotoAsync(fullUrl);
 
-                            var apiUrl = "/api/v1" + url;
+                            var apiUrl   = "/api/v1" + url;
                             var response = await pageLocal.WaitForResponseAsync(r =>
                                 r.Url.Contains(apiUrl), new() { Timeout = 30000 });
 
-                            var bytes = await response.BodyAsync();
+                            var bytes    = await response.BodyAsync();
                             string jsonText = Encoding.UTF8.GetString(bytes);
-
-                            var document = JsonSerializer.Deserialize<JsonElement>(jsonText);
+                            var document    = JsonSerializer.Deserialize<JsonElement>(jsonText);
 
                             if (document.ValueKind == JsonValueKind.Object)
                             {
                                 var spell = ParseSpellFromDocument(document);
                                 if (spell != null)
                                 {
+                                    processedName = spell.Name;
                                     spellToAdd.Add(spell);
 
-                                    // Skip if already processed in this run (duplicate URL)
-                                    if (savedNames.Contains(spell.Name)) continue;
-                                    savedNames.Add(spell.Name);
-
-                                    try
+                                    if (!savedNames.Contains(spell.Name))
                                     {
-                                        using var dbSave = new DDInformationContext();
-                                        var existing = dbSave.Spells.FirstOrDefault(s => s.Name == spell.Name);
-                                        if (existing != null)
+                                        savedNames.Add(spell.Name);
+                                        try
                                         {
-                                            existing.Description       = spell.Description;
-                                            existing.CellLevel         = spell.CellLevel;
-                                            existing.Source            = spell.Source;
-                                            existing.Range             = spell.Range;
-                                            existing.School            = spell.School;
-                                            existing.Components        = spell.Components;
-                                            existing.Duration          = spell.Duration;
-                                            existing.Time              = spell.Time;
-                                            existing.Peculiarities     = spell.Peculiarities;
-                                            existing.MaterialComponent = spell.MaterialComponent;
-                                            existing.Upper             = spell.Upper;
-                                            Console.WriteLine($"[ОБНОВЛЕНО] Заклинание: {spell.Name}");
+                                            using var dbSave = new DDInformationContext();
+                                            var existing = dbSave.Spells.FirstOrDefault(s => s.Name == spell.Name);
+                                            if (existing != null)
+                                            {
+                                                existing.Description       = spell.Description;
+                                                existing.CellLevel         = spell.CellLevel;
+                                                existing.Source            = spell.Source;
+                                                existing.Range             = spell.Range;
+                                                existing.School            = spell.School;
+                                                existing.Components        = spell.Components;
+                                                existing.Duration          = spell.Duration;
+                                                existing.Time              = spell.Time;
+                                                existing.Peculiarities     = spell.Peculiarities;
+                                                existing.MaterialComponent = spell.MaterialComponent;
+                                                existing.Upper             = spell.Upper;
+                                                Console.WriteLine($"[ОБНОВЛЕНО] Заклинание: {spell.Name}");
+                                            }
+                                            else
+                                            {
+                                                dbSave.Spells.Add(spell);
+                                                Console.WriteLine($"[ДОБАВЛЕНО] Заклинание: {spell.Name}");
+                                            }
+                                            await dbSave.SaveChangesAsync();
                                         }
-                                        else
+                                        catch (Exception saveEx)
                                         {
-                                            dbSave.Spells.Add(spell);
-                                            Console.WriteLine($"[ДОБАВЛЕНО] Заклинание: {spell.Name}");
+                                            Console.WriteLine($"[ОШИБКА сохранения] {spell.Name}: {saveEx.InnerException?.Message ?? saveEx.Message}");
                                         }
-                                        await dbSave.SaveChangesAsync();
-                                    }
-                                    catch (Exception saveEx)
-                                    {
-                                        Console.WriteLine($"[ОШИБКА сохранения] {spell.Name}: {saveEx.InnerException?.Message ?? saveEx.Message}");
                                     }
                                 }
                             }
@@ -206,6 +215,12 @@ namespace DnD_character_list
                         catch (Exception ex)
                         {
                             Console.WriteLine($"Ошибка с прокси {proxy} для URL {url}: {ex.Message}");
+                        }
+                        finally
+                        {
+                            // Always count each visited link, even on error
+                            var cur = Interlocked.Increment(ref counter[0]);
+                            progress?.Report((cur, total, processedName ?? url));
                         }
                     }
                 }));
@@ -279,18 +294,18 @@ namespace DnD_character_list
             {
                 return new Spell
                 {
-                    Name = name,
-                    Description = desc,
-                    CellLevel = cell_level,
-                    Source = source,
-                    Range = range,
-                    School = school,
-                    Components = components,
-                    Duration = duration,
-                    Time = time,
-                    Peculiarities = peculiarities,
-                    MaterialComponent = material_component,
-                    Upper = upper
+                    Name               = name,
+                    Description        = desc,
+                    CellLevel          = cell_level,
+                    Source             = source,
+                    Range              = range,
+                    School             = school,
+                    Components         = components,
+                    Duration           = duration,
+                    Time               = time,
+                    Peculiarities      = peculiarities,
+                    MaterialComponent  = material_component,
+                    Upper              = upper
                 };
             }
 
@@ -333,7 +348,6 @@ namespace DnD_character_list
         {
             using var db = new DDInformationContext();
 
-            // Deduplicate by name within the collected bag
             var unique = spellToAdd
                 .GroupBy(sp => sp.Name)
                 .Select(g => g.First())

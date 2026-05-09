@@ -210,6 +210,10 @@ namespace DnD_character_list
 
                 // Загружаем заклинания персонажа и строим страницу карточек
                 LoadCharacterSpells();
+
+                // Загружаем инвентарь и черты
+                LoadCharacterItems();
+                LoadCharacterTraits();
             }
         }
 
